@@ -116,6 +116,9 @@
         } else {
           box.classList.add('incorrect');
         }
+      } else if (!showFeedback && q.answered) {
+        // If no feedback, show answered questions in grey
+        box.classList.add('answered');
       }
       
       // Add click handler to navigate to question
@@ -128,6 +131,9 @@
   }
 
   function navigateToQuestion(targetIndex) {
+    // Suppress auto-pause when navigating between questions
+    suppressAutoPause = true;
+    
     // Create a form to navigate to the specific question
     const form = document.createElement('form');
     form.method = 'POST';

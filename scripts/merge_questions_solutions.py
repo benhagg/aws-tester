@@ -42,7 +42,7 @@ def main():
     data_dir = base_dir / "data"
     questions_file = data_dir / "questions.json"
     solutions_file = data_dir / "solutions.json"
-    output_file = data_dir / "questions_merged.json"
+    output_file = data_dir / "questions_1.json"
 
     questions = load_json(questions_file)
     solutions = load_json(solutions_file)

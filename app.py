@@ -565,7 +565,7 @@ def answer():
             commit=True,
         )
         update_progress(test_id, next_index, None, 0)
-        return redirect(url_for("history"))
+        return redirect(url_for("review", test_id=test_id))
 
     update_progress(test_id, next_index, now, 0)
     return redirect(url_for("question", test_id=test_id))

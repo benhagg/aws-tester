@@ -335,6 +335,11 @@ body {
   background: #fff8f1;
 }
 
+.question-box.answered {
+  background: #e8e8e8;
+  color: var(--muted);
+}
+
 .question-box.flagged {
   background: #fff3cd;
   border-color: #ffc107;
@@ -358,6 +363,10 @@ body {
 
 .question-box.flagged.incorrect {
   background: linear-gradient(135deg, #fff3cd 50%, #f8d7da 50%);
+}
+
+.question-box.flagged.answered {
+  background: linear-gradient(135deg, #fff3cd 50%, #e8e8e8 50%);
 }
 
 .feedback-header {

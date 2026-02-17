@@ -21,7 +21,7 @@
             "C. Use Amazon Athena directly with Amazon S3 to run the queries as needed.",
             "D. Use AWS Glue to catalog the logs. Use a transient Apache Spark cluster on Amazon EMR to run the SQL queries as needed."
         ],
-        "solution": "A",
+        "solution": "C",
         "explanation": "Amazon Athena is a serverless, interactive query service that allows you to analyze data directly in S3 using standard SQL. It requires no infrastructure setup or data loading, making it the solution with the least operational overhead.",
         "select_num": 1
     },
@@ -138,7 +138,7 @@
             "C. Create an Amazon S3 bucket to store objects that are encrypted with an AWS Key Management Service (AWS KMS) encryption key. Migrate the credential file to the S3 bucket. Point the application to the S3 bucket.",
             "D. Create an encrypted Amazon Elastic Block Store (Amazon EBS) volume for each EC2 instance. Attach the new EBS volume to each EC2 instance. Migrate the credential file to the new EBS volume. Point the application to the new EBS volume."
         ],
-        "solution": "A",
+        "solution": "D",
         "explanation": "AWS Secrets Manager handles the storage, distribution, and automatic rotation of credentials, eliminating the need for hardcoded files and reducing manual management.",
         "select_num": 1
     },
@@ -151,7 +151,7 @@
             "C. Create an Amazon CloudFront distribution that has the S3 bucket as an origin. Create an AWS Global Accelerator standard accelerator that has the ALB and the CloudFront distribution as endpoints. Create a custom domain name that points to the accelerator DNS name. Use the custom domain name as an endpoint for the web application.",
             "D. Create an Amazon CloudFront distribution that has the ALB as an origin. Create an AWS Global Accelerator standard accelerator that has the S3 bucket as an endpoint. Create two domain names. Point one domain name to the CloudFront DNS name for dynamic content. Point the other domain name to the accelerator DNS name for static content. Use the domain names as endpoints for the web application."
         ],
-        "solution": "A",
+        "solution": "D",
         "explanation": "CloudFront improves global performance by caching static content at edge locations and optimizing the network path for dynamic content directed to the ALB.",
         "select_num": 1
     },
@@ -203,7 +203,7 @@
             "C. Create an AWS Glue table and crawler for the data in Amazon S3. Create an AWS Glue extract, transform, and load (ETL) job to produce reports. Publish the reports to Amazon S3. Use S3 bucket policies to limit access to the reports.",
             "D. Create an AWS Glue table and crawler for the data in Amazon S3. Use Amazon Athena Federated Query to access data within Amazon RDS for PostgreSQL. Generate reports by using Amazon Athena. Publish the reports to Amazon S3. Use S3 bucket policies to limit access to the reports."
         ],
-        "solution": "B",
+        "solution": "D",
         "explanation": "Amazon QuickSight is a BI tool that can connect to various AWS data sources. It allows for creating dashboards and using fine-grained permissions to control access for different user groups.",
         "select_num": 1
     },
@@ -230,7 +230,7 @@
             "D. Launch an Amazon EC2 instance to monitor an Amazon Simple Queue Service (Amazon SQS) queue. When items are added to the queue, log the file name in a text file on the EC2 instance and invoke the Lambda function.",
             "E. Configure an Amazon EventBridge (Amazon CloudWatch Events) event to monitor the S3 bucket. When an image is uploaded, send an alert to an Amazon ample Notification Service (Amazon SNS) topic with the application owner's email address for further processing."
         ],
-        "solution": "A & B",
+        "solution": "B & E",
         "explanation": "Using SQS between S3 and Lambda ensures that the processing is durable and stateless. If Lambda fails, the message remains in the queue for retry, preventing data loss.",
         "select_num": 2
     },
@@ -269,7 +269,7 @@
             "C. Migrate the full application to run in containers. Host the containers on Amazon Elastic Kubernetes Service (Amazon EKS). Use the Kubernetes Cluster Autoscaler to increase and decrease the number of pods to process bursts in traffic. Store the data in Amazon RDS for MySQL.",
             "D. Use an Amazon S3 bucket to host the website's static content. Deploy an Amazon CloudFront distribution. Set the S3 bucket as the origin. Use Amazon API Gateway and AWS Lambda functions for the backend APIs. Store the data in Amazon DynamoDB."
         ],
-        "solution": "D",
+        "solution": "B",
         "explanation": "This serverless architecture (S3/CloudFront/Lambda/DynamoDB) scales automatically to handle millions of requests and requires minimal maintenance compared to managing servers.",
         "select_num": 1
     },
@@ -1409,7 +1409,7 @@
             "D. Configure S3 Event Notifications to invoke an AWS Lambda function when an image is uploaded. Use the function to resize the image.",
             "E. Create an Amazon EventBridge (Amazon CloudWatch Events) rule that invokes an AWS Lambda function on a schedule to resize uploaded images."
         ],
-        "solution": "B & D",
+        "solution": "C & D",
         "explanation": "Uploading directly to S3 offloads work from the EC2 instance. S3 events + Lambda ensures the resizing happens asynchronously and scales automatically.",
         "select_num": 2
     },
@@ -1435,7 +1435,7 @@
             "C. Use AWS Lambda with a new code that uses one of the supported languages. Create multiple Lambda functions to support the load. Use Amazon API Gateway as an entry point to the Lambda functions.",
             "D. Use a high performance computing (HPC) solution such as AWS ParallelCluster to establish an HPC cluster that can process the incoming requests at the appropriate scale."
         ],
-        "solution": "A",
+        "solution": "B",
         "explanation": "Fargate is serverless, removing the need to manage the underlying EC2 fleet. ECS handles the container orchestration with minimal configuration.",
         "select_num": 1
     },
@@ -1527,7 +1527,7 @@
             "C. Set up AWS Shield in bath Regions. Associate Regional web ACLs with an API stage.",
             "D. Set up AWS Shield in one of the Regions. Associate Regional web ACLs with an API stage."
         ],
-        "solution": "A",
+        "solution": "B",
         "explanation": "AWS WAF integrates directly with API Gateway to filter malicious traffic based on predefined rulesets.",
         "select_num": 1
     },
@@ -1606,7 +1606,7 @@
             "D. Configure a VPC with one public subnet, one private subnet, and two NAT gateways across two Availability Zones. Deploy an Application Load Balancer in the public subnet.",
             "D. Configure a VPC with two public subnets, two private subnets, and two NAT gateways across two Availability Zones. Deploy an Application Load Balancer in the public subnets."
         ],
-        "solution": "A & E",
+        "solution": "A & D",
         "explanation": "NAT gateways allow private instances to reach the internet for payments, while Multi-AZ RDS and ASGs provide high availability.",
         "select_num": 2
     },
@@ -1685,7 +1685,7 @@
             "C. Write an S3 bucket policy that assigns the CloudFront distribution ID as the Principal and assigns the target S3 bucket as the Amazon Resource Name (ARN).",
             "D. Create an origin access identity (OAI). Assign the OAI to the CloudFront distribution. Configure the S3 bucket permissions so that only the OAI has read permission."
         ],
-        "solution": "D",
+        "solution": "B",
         "explanation": "OAI acts as a special user for CloudFront. By restricting S3 access to only that OAI, you ensure users cannot bypass the CDN.",
         "select_num": 1
     },
@@ -1698,7 +1698,7 @@
             "C. Application Load Balancer with Amazon EC2 Auto Scaling",
             "D. Amazon Route 53 with internal Application Load Balancers"
         ],
-        "solution": "A",
+        "solution": "D",
         "explanation": "S3 provides serverless storage, and CloudFront provides global caching for high-speed delivery of reports.",
         "select_num": 1
     },
@@ -1777,7 +1777,7 @@
             "C. Create a Multi-AZ Auto Scaling group for EC2 instances that host the RabbitMQ queue. Create another Multi-AZ Auto Scaling group for EC2 instances that host the application. Migrate the database to run on a Multi-AZ deployment of Amazon RDS for PostgreSQL.",
             "D. Create a Multi-AZ Auto Scaling group for EC2 instances that host the RabbitMQ queue. Create another Multi-AZ Auto Scaling group for EC2 instances that host the application. Create a third Multi-AZ Auto Scaling group for EC2 instances that host the PostgreSQL database"
         ],
-        "solution": "B",
+        "solution": "A",
         "explanation": "Amazon MQ is a managed message broker service that provides high availability and removes manual RabbitMQ management.",
         "select_num": 1
     },
@@ -1843,7 +1843,7 @@
             "C. Host the application on Amazon EC2 instances. Set up an Application Load Balancer with EC2 instances in an Auto Scaling group as targets.",
             "D. Host the application on Amazon Elastic Container Service (Amazon ECS). Set up an Application Load Balancer with Amazon ECS as the target."
         ],
-        "solution": "D",
+        "solution": "A",
         "explanation": "ECS is ideal for microservices architectures, allowing different teams to manage and scale their own service containers.",
         "select_num": 1
     },
@@ -2014,7 +2014,7 @@
             "D. Use an AWS Glue extract, transform, and load (ETL) job to convert the data into JSON format. Load the data into multiple Amazon OpenSearch Service (Amazon Elasticsearch Service) clusters.",
             "E. Use blueprints in AWS Lake Formation to identify the data that can be ingested into a data lake. Use AWS Glue to crawl the source, extract the data, and load the data into Amazon S3 in Apache Parquet format."
         ],
-        "solution": "A & C",
+        "solution": "A & E",
         "explanation": "Athena provides serverless SQL for staged data in S3. QuickSight creates the visual dashboards for management.",
         "select_num": 2
     },
@@ -2081,7 +2081,7 @@
             "C. Place the JSON documents in an Amazon Elastic Block Store (Amazon EBS) volume. Use the EBS Multi-Attach feature to attach the volume to multiple Amazon EC2 instances. Run the Python code on the EC2 instances to process the documents. Store the results on an Amazon RDS DB instance.",
             "D. Place the JSON documents in an Amazon Simple Queue Service (Amazon SQS) queue as messages. Deploy the Python code as a container on an Amazon Elastic Container Service (Amazon ECS) cluster that is configured with the Amazon EC2 launch type. Use the container to process the SQS messages. Store the results on an Amazon RDS DB instance."
         ],
-        "solution": "B",
+        "solution": "A",
         "explanation": "S3 events trigger Lambda for serverless processing. Aurora is a managed relational database that scales well.",
         "select_num": 1
     },
@@ -2474,7 +2474,7 @@
             "C. Migrate the ordering application to Amazon DynamoDB with on-demand capacity.",
             "D. Schedule the reporting queries for non-peak hours."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 1
     },
@@ -2488,7 +2488,7 @@
             "D. Create an AWS Lambda function that runs when new documents are uploaded. Use Amazon Rekognition to convert the documents to raw text. Use Amazon Transcribe Medical to detect and extract relevant medical information from the text.",
             "E. Create an AWS Lambda function that runs when new documents are uploaded. Use Amazon Textract to convert the documents to raw text. Use Amazon Comprehend Medical to detect and extract relevant medical information from the text."
         ],
-        "solution": "",
+        "solution": "B & E",
         "explanation": "",
         "select_num": 2
     },
@@ -2501,7 +2501,7 @@
             "C. Use Amazon Route 53 DNS caching",
             "D. Use Amazon ElastiCache for Memcached."
         ],
-        "solution": "",
+        "solution": "B",
         "explanation": "",
         "select_num": 1
     },
@@ -2514,7 +2514,7 @@
             "C. Launch two EC2 instances, each in a different AWS Region. Install the database on both EC2 instances. Set up database replication. Fail over the database to a second Region.",
             "D. Launch an EC2 instance in an Availability Zone. Install the database on the EC2 instance. Use an Amazon Machine Image (AMI) to back up the data. Use EC2 automatic recovery to recover the instance if a disruptive event occurs."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 1
     },
@@ -2527,7 +2527,7 @@
             "C. Move the EC2 instances into an Auto Scaling group. Configure the order system to send messages to an Amazon Simple Queue Service (Amazon SQS) queue. Configure the EC2 instances to consume messages from the queue.",
             "D. Create an Amazon Simple Notification Service (Amazon SNS) topic. Create an AWS Lambda function, and subscribe the function to the SNS topic. Configure the order system to send messages to the SNS topic. Send a command to the EC2 instances to process the messages by using AWS Systems Manager Run Command."
         ],
-        "solution": "",
+        "solution": "C",
         "explanation": "",
         "select_num": 1
     },
@@ -2540,7 +2540,7 @@
             "C. Configure Amazon DynamoDB Streams to invoke an AWS Lambda function when a new item is created in the table. Configure the Lambda function to delete items in the table that are older than 30 days.",
             "D. Extend the application to add an attribute that has a value of the current timestamp plus 30 days to each new item that is created in the table. Configure DynamoDB to use the attribute as the TTL attribute."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2554,7 +2554,7 @@
             "D. Use AWS Database Migration Service (AWS DMS) to migrate from the Oracle database to Amazon DynamoDB in a Multi-AZ deployment.",
             "E. Use AWS Database Migration Service (AWS DMS) to migrate from the Oracle database to Oracle on Amazon RDS in a Multi-AZ deployment."
         ],
-        "solution": "",
+        "solution": "B & E",
         "explanation": "",
         "select_num": 2
     },
@@ -2567,7 +2567,7 @@
             "C. Use Amazon Elastic Kubernetes Service (Amazon EKS) with Amazon EC2 worker nodes for compute and Amazon DynamoDB for data storage.",
             "D. Use Amazon Elastic Kubernetes Service (Amazon EKS) with AWS Fargate for compute and Amazon DocumentDB (with MongoDB compatibility) for data storage."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2580,7 +2580,7 @@
             "C. Use Amazon Translate for multiple speaker recognition. Store the transcript files in Amazon Redshift. Use SQL queries for transcript file analysis.",
             "D. Use Amazon Rekognition for multiple speaker recognition. Store the transcript files in Amazon S3. Use Amazon Textract for transcript file analysis."
         ],
-        "solution": "",
+        "solution": "B",
         "explanation": "",
         "select_num": 1
     },
@@ -2593,7 +2593,7 @@
             "C. Send the user\u2019s email address in the header with every request. Invoke an AWS Lambda function to validate that the user with that email address has proper access.",
             "D. Configure an Amazon Cognito user pool authorizer in API Gateway to allow Amazon Cognito to validate each request."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2684,7 +2684,7 @@
             "C. Create a secondary index in DynamoDB for the table with the user requests.",
             "D. Use the Amazon Simple Queue Service (Amazon SQS) queue and Lambda to buffer writes to DynamoDB."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2723,7 +2723,7 @@
             "C. Provision two Amazon Simple Queue Service (Amazon SQS) queues: one for order collection and another for order fulfillment. Configure the EC2 instances to poll their respective queue. Scale the Auto Scaling groups based on notifications that the queues send.",
             "D. Provision two Amazon Simple Queue Service (Amazon SQS) queues: one for order collection and another for order fulfillment. Configure the EC2 instances to poll their respective queue. Create a metric based on a backlog per instance calculation. Scale the Auto Scaling groups based on this metric."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2841,7 +2841,7 @@
             "C. Modify the CloudFormation templates. Replace the EC2 instances with R5 EC2 instances. Use Amazon CloudWatch built-in EC2 memory metrics to track the application performance for future capacity planning.",
             "D. Modify the CloudFormation templates. Replace the EC2 instances with R5 EC2 instances. Deploy the Amazon CloudWatch agent on the EC2 instances to generate custom application latency metrics for future capacity planning."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -2880,7 +2880,7 @@
             "C. Create an IAM group in the company\u2019s account. Add the tool\u2019s IAM user from the vendor account to the group. Attach the appropriate IAM policies to the group for the permissions that the vendor requires.",
             "D. Create a new identity provider by choosing \u201cAWS account\u201d as the provider type in the IAM console. Supply the vendor\u2019s AWS account ID and user name. Attach the appropriate IAM policies to the new provider for the permissions that the vendor requires."
         ],
-        "solution": "A",
+        "solution": "B",
         "explanation": "IAM Role assumption is the standard method for cross-account access, ensuring no static credentials or users need to be shared between accounts.",
         "select_num": 1
     },
@@ -2921,7 +2921,7 @@
             "C. Place activity data in an Amazon S3 bucket. Configure Amazon S3 to run an AWS Lambda function on the data as the data arrives in the S3 bucket.",
             "D. Create an ingestion service on Amazon EC2 instances that are spread across multiple Availability Zones. Configure the service to forward data to an Amazon RDS Multi-AZ database."
         ],
-        "solution": "B",
+        "solution": "A",
         "explanation": "Firehose is a fully managed buffer/delivery service. Delivering directly to Redshift enables powerful SQL-based analytics on the data lake.",
         "select_num": 1
     },
@@ -2961,7 +2961,7 @@
             "C. Modify the API to write incoming data to an Amazon Simple Queue Service (Amazon SQS) queue. Use an AWS Lambda function that Amazon SQS invokes to write data from the queue to the database.",
             "D. Modify the API to write incoming data to an Amazon Simple Notification Service (Amazon SNS) topic. Use an AWS Lambda function that Amazon SNS invokes to write data from the topic to the database."
         ],
-        "solution": "C",
+        "solution": "A",
         "explanation": "SQS provides a buffer to absorb spikes in write requests. Lambda then processes messages at a controlled rate to match the database's capacity.",
         "select_num": 1
     },
@@ -3053,7 +3053,7 @@
             "C. Use the AWS Schema Conversion Tool with AWS Database Migration Service (AWS DMS) using a memory optimized replication instance. Create a full load plus change data capture (CDC) replication task and a table mapping to select all tables.",
             "D. Use the AWS Schema Conversion Tool with AWS Database Migration Service (AWS DMS) using a compute optimized replication instance. Create a full load plus change data capture (CDC) replication task and a table mapping to select the largest tables."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -3210,7 +3210,7 @@
             "D. Create a global table and specify the AWS Regions where the table will be available.",
             "E. Enable automatic backups on the source instance by setting the backup retention period to a value other than 0."
         ],
-        "solution": "",
+        "solution": "C",
         "explanation": "",
         "select_num": 2
     },
@@ -3341,7 +3341,7 @@
             "C. Create an Amazon EventBridge rule to invoke an AWS Lambda function on a schedule. Configure the Lambda function to send the EC2 Auto Scaling status data directly to Amazon S3.",
             "D. Use a bootstrap script during the launch of an EC2 instance to install Amazon Kinesis Agent. Configure Kinesis Agent to collect the EC2 Auto Scaling status data and send the data to Amazon Kinesis Data Firehose. Store the data in Amazon S3."
         ],
-        "solution": "",
+        "solution": "A & C",
         "explanation": "",
         "select_num": 1
     },
@@ -3683,7 +3683,7 @@
             "C. Migrate the simulation application to Linux Amazon EC2 instances. Migrate the visualization application to Windows EC2 instances. Configure Amazon Simple Queue Service (Amazon SQS) to exchange data between the applications.",
             "D. Migrate the simulation application to Linux Amazon EC2 instances. Migrate the visualization application to Windows EC2 instances. Configure Amazon FSx for NetApp ONTAP for storage."
         ],
-        "solution": "",
+        "solution": "C",
         "explanation": "",
         "select_num": 1
     },
@@ -3722,7 +3722,7 @@
             "C. Invalidate the CloudFront cache.",
             "D. Use AWS Certificate Manager (ACM) to validate the website\u2019s SSL certificate."
         ],
-        "solution": "C",
+        "solution": "B",
         "explanation": "CloudFront caches objects at edge locations. If the origin (S3) is updated, users will still see old content until the cache expires or is manually invalidated.",
         "select_num": 1
     },
@@ -3880,7 +3880,7 @@
             "C. Provision a subnet in each Availability Zone. Configure the Auto Scaling group to distribute the EC2 instances across both Availability Zones. Configure the DB instance for Multi-AZ deployment.",
             "D. Provision a subnet that extends across both Availability Zones. Configure the Auto Scaling group to distribute the EC2 instances across both Availability Zones. Configure the DB instance for Multi-AZ deployment."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -3906,7 +3906,7 @@
             "C. Migrate the application layer to Amazon EC2 Reserved Instances. Migrate the data storage layer to Amazon Aurora Reserved Instances.",
             "D. Migrate the application layer to Amazon EC2 On-Demand Instances. Migrate the data storage layer to Amazon RDS Reserved Instances."
         ],
-        "solution": "C",
+        "solution": "D",
         "explanation": "For 24/7 stable workloads, Reserved Instances offer the highest discounts compared to On-Demand pricing for both compute and database layers.",
         "select_num": 1
     },
@@ -4012,7 +4012,7 @@
             "D. Review the Trusted Advisor check for Amazon RDS Idle DB Instances.",
             "E. Review the Trusted Advisor check for Amazon Redshift Reserved Node Optimization."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 2
     },
@@ -4038,7 +4038,7 @@
             "C. Set up a second S3 bucket in the eu-central-1 Region with S3 Cross-Region Replication between the buckets. Direct customer requests to the closest Region. Continue to use S3 signed URLs for access control.",
             "D. Modify the web application to enable streaming of the datasets to end users. Configure the web application to read the data from the existing S3 bucket. Implement access control directly in the application."
         ],
-        "solution": "B",
+        "solution": "D",
         "explanation": "CloudFront reduces data transfer costs (as egress from S3 to CloudFront is free) and improves performance via edge caching. Signed URLs ensure that only paying customers can access the data.",
         "select_num": 1
     },
@@ -4051,7 +4051,7 @@
             "C. Create a single Amazon Simple Notification Service (Amazon SNS) topic. Subscribe Amazon Simple Queue Service (Amazon SQS) queues to the SNS topic. Configure SNS message filtering to publish messages to the proper SQS queue based on the quote type. Configure each backend application server to use its own SQS queue.",
             "D. Create multiple Amazon Kinesis Data Firehose delivery streams based on the quote type to deliver data streams to an Amazon OpenSearch Service cluster. Configure the application to send messages to the proper delivery stream. Configure each backend group of application servers to search for the messages from OpenSearch Service and process them accordingly."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -4064,7 +4064,7 @@
             "C. Create a backup plan by using AWS Backup to perform nightly backups. Copy the backups to another Region. Add the application\u2019s EBS volumes as resources.",
             "D. Write an AWS Lambda function that schedules nightly snapshots of the application's EBS volumes and copies the snapshots to a different Availability Zone."
         ],
-        "solution": "C",
+        "solution": "B",
         "explanation": "AWS Backup is a centralized service that automates backups and natively supports cross-region backup copies, providing the most streamlined management.",
         "select_num": 1
     },
@@ -4090,7 +4090,7 @@
             "C. Amazon Redshift Spectrum",
             "D. Amazon RDS for MySQL"
         ],
-        "solution": "B",
+        "solution": "A",
         "explanation": "Aurora Serverless automatically starts up, shuts down, and scales capacity based on application demand, making it ideal for infrequent or unpredictable workloads.",
         "select_num": 1
     },
@@ -4116,7 +4116,7 @@
             "C. Migrate the script on the EC2 instance to an AWS Lambda function with the appropriate runtime.",
             "D. Use AWS Systems Manager Run Command to run the script on demand."
         ],
-        "solution": "C",
+        "solution": "D",
         "explanation": "Lambda is serverless and scales automatically based on queue depth. You only pay when the function is actually running, making it more cost-effective than a running EC2 instance.",
         "select_num": 1
     },
@@ -4261,7 +4261,7 @@
             "C. Implement strict inbound security group rules. Configure an outbound rule that allows traffic only to the authorized software repositories on the internet by specifying the URLs.",
             "D. Configure an Application Load Balancer (ALB) in front of the EC2 instances. Direct all outbound traffic to the ALB. Use a URL-based rule listener in the ALB\u2019s target group for outbound access to the internet."
         ],
-        "solution": "",
+        "solution": "B",
         "explanation": "",
         "select_num": 1
     },
@@ -5283,7 +5283,7 @@
             "D. Use a target tracking scaling policy to scale the Auto Scaling group based on instance CPU utilization.",
             "E. Use scheduled scaling to change the Auto Scaling group minimum, maximum, and desired capacity to zero for weekends. Revert to the default values at the start of the week."
         ],
-        "solution": "A & E",
+        "solution": "D & E",
         "explanation": "Scaling the ALB ensures it can handle request volume, while scheduled scaling for the ASG is the most cost-effective way to shut down environments during known idle periods like weekends.",
         "select_num": 2
     },
@@ -5401,7 +5401,7 @@
             "C. Use AWS DataSync to transfer the files to Amazon S3. Create an application that uses the DataSync API in the automation workflow.",
             "D. Deploy an AWS Transfer for SFTP endpoint. Create a script that checks for new files on the network share and uploads the new files by using SFTP."
         ],
-        "solution": "",
+        "solution": "B",
         "explanation": "",
         "select_num": 1
     },
@@ -5441,7 +5441,7 @@
             "C. Purchase a Compute Savings Plan. Optimize the Lambda functions\u2019 duration and memory usage, the number of invocations, and the amount of data that is transferred. Connect the Lambda functions to the private subnet that contains the EC2 instances.",
             "D. Purchase a Compute Savings Plan. Optimize the Lambda functions\u2019 duration and memory usage, the number of invocations, and the amount of data that is transferred. Keep the Lambda functions in the Lambda service VPC."
         ],
-        "solution": "",
+        "solution": "C",
         "explanation": "",
         "select_num": 1
     },
@@ -5521,7 +5521,7 @@
             "D. Amazon Elastic Container Service (Amazon ECS) resource",
             "E. Amazon EC2 resource"
         ],
-        "solution": "",
+        "solution": "A & B",
         "explanation": "",
         "select_num": 2
     },
@@ -5560,7 +5560,7 @@
             "C. Use Amazon S3 Transfer Acceleration to move the existing data to Amazon S3. Use AWS CloudTrail to log data events.",
             "D. Use AWS Storage Gateway to move the existing data to Amazon S3. Use AWS CloudTrail to log management events."
         ],
-        "solution": "D",
+        "solution": "A",
         "explanation": "Storage Gateway facilitates the migration to S3. CloudTrail provides the mandatory auditing of who accessed the data or changed the configuration.",
         "select_num": 1
     },
@@ -5613,7 +5613,7 @@
             "D. Create S3 Lifecycle rules for .csv files and image files in the S3 bucket. Transition the .csv files from S3 Standard to S3 One Zone-Infrequent Access (S3 One Zone-IA) 1 day after they are uploaded. Expire the image files after 30 days.",
             "E. Create S3 Lifecycle rules for .csv files and image files in the S3 bucket. Transition the .csv files from S3 Standard to S3 Standard-Infrequent Access (S3 Standard-IA) 1 day after they are uploaded. Keep the image files in Reduced Redundancy Storage (RRS)."
         ],
-        "solution": "B & C",
+        "solution": "B & D",
         "explanation": "Lambda processes images ASAP. Moving the large CSV files to Glacier after one day saves storage costs while still allowing for the biannual ML training.",
         "select_num": 2
     },
@@ -5665,7 +5665,7 @@
             "C. Create an AWS CloudFormation template to create EC2 instances and a load balancer to be launched when needed. Configure the DynamoDB table as a global table. Configure DNS failover to point to the new disaster recovery Region's load balancer.",
             "D. Create an Auto Scaling group and load balancer in the disaster recovery Region. Configure the DynamoDB table as a global table. Create an Amazon CloudWatch alarm to trigger an AWS Lambda function that updates Amazon Route 53 pointing to the disaster recovery load balancer."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 1
     },
@@ -6227,7 +6227,7 @@
         "question_number": 477,
         "question_text": "A group requires permissions to list an Amazon S3 bucket and delete objects from that bucket. An administrator has created the following IAM policy to provide access to the bucket and applied that policy to the group. The group is not able to delete objects in the bucket. The company follows least-privilege access rules. Which statement should a solutions architect add to the policy to correct bucket access? A. B. C. D. ",
         "options": [],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 1
     },
@@ -6332,7 +6332,7 @@
             "C. Store the video archives in Amazon S3 Standard-Infrequent Access (S3 Standard-IA).",
             "D. Store the video archives in Amazon S3 One Zone-Infrequent Access (S3 One Zone-IA)."
         ],
-        "solution": "A",
+        "solution": "B",
         "explanation": "S3 Glacier offers very low storage costs. Expedited retrievals fulfill the 5-minute restoration requirement (vs. hours for standard or days for deep archive).",
         "select_num": 1
     },
@@ -6397,7 +6397,7 @@
             "C. Configure Amazon DynamoDB Streams. Create an AWS Lambda function to consume the stream and export the data to an Amazon S3 bucket.",
             "D. Create an AWS Lambda function to export the data from the database tables to Amazon S3 on a regular basis. Turn on point-in-time recovery for the table."
         ],
-        "solution": "B",
+        "solution": "A",
         "explanation": "DynamoDB native export to S3 uses Kinesis/serverless capacity and does not consume the table's provisioned RCUs, preventing performance impact.",
         "select_num": 1
     },
@@ -6410,7 +6410,7 @@
             "C. Use the AWS Lambda event source mapping. Set Amazon Simple Queue Service (Amazon SQS) FIFO queues as the event source. Use AWS KMS keys (SSE-KMS). Add the kms:Decrypt permission for the Lambda execution role.",
             "D. Use the AWS Lambda event source mapping. Set Amazon Simple Queue Service (Amazon SQS) standard queues as the event source. Use AWS KMS keys (SSE-KMS) for encryption. Add the encryption key invocation permission for the Lambda function."
         ],
-        "solution": "",
+        "solution": "D",
         "explanation": "",
         "select_num": 1
     },
@@ -6900,7 +6900,7 @@
             "C. Use AWS Transfer Family to create an FTP server to store incoming files on an Amazon Elastic Block Store (Amazon EBS) volume. Configure a job queue in AWS Batch. Use an Amazon S3 event notification when each file arrives to invoke the job in AWS Batch. Delete the files after the job has processed the files.",
             "D. Use AWS Transfer Family to create an FTP server to store incoming files in Amazon S3 Standard. Create an AWS Lambda function to process the files and to delete the files after they are processed. Use an S3 event notification to invoke the Lambda function when the files arrive."
         ],
-        "solution": "",
+        "solution": "B",
         "explanation": "",
         "select_num": 1
     },
@@ -7045,7 +7045,7 @@
             "C. Use AWS Elastic Disaster Recovery configured to replicate disk changes to AWS as a pilot light.",
             "D. Use third-party backup software to capture backups every night. Store a secondary set of backups in Amazon S3."
         ],
-        "solution": "",
+        "solution": "A & E",
         "explanation": "",
         "select_num": 1
     },
@@ -7100,7 +7100,7 @@
             "D. Create an organization in AWS Organizations in a new payer account. Invite the other AWS accounts to join the organization from the management account.",
             "E. Create an organization in AWS Organizations in the existing AWS account with the existing EC2 instances and Savings Plan. Invite the other AWS accounts to join the organization from the management account."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 2
     },
@@ -7441,7 +7441,7 @@
             "C. Check for the events in Amazon CloudWatch Logs.",
             "D. Check the trails in AWS CloudTrail for the EventBridge events."
         ],
-        "solution": "",
+        "solution": "A",
         "explanation": "",
         "select_num": 1
     },
@@ -7597,7 +7597,7 @@
             "C. Set the Auto Scaling group's minimum capacity to two. Deploy four Spot Instances in one Availability Zone.",
             "D. Set the Auto Scaling group's minimum capacity to four. Deploy two On-Demand Instances in one Availability Zone and two Spot Instances in a second Availability Zone."
         ],
-        "solution": "",
+        "solution": "A & C & F",
         "explanation": "",
         "select_num": 1
     },

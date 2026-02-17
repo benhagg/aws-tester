@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="panel">
+<section class="panel" id="question-panel">
   <div class="question-header">
     <div>
       <h2>Question {{ question_number }}</h2>
@@ -13,15 +13,76 @@
     </form>
   </div>
   <p class="question-text">{{ question_text }}</p>
+  {% if select_num|int > 1 %}
+    <p class="muted">Select {{ select_num }} answers.</p>
+  {% endif %}
   <form method="post" action="{{ url_for('answer') }}" class="options">
     <input type="hidden" name="test_id" value="{{ test_id }}" />
+    {% set input_type = 'checkbox' if select_num|int > 1 else 'radio' %}
     {% for option in options %}
-      <label class="option">
-        <input type="radio" name="selected_answer" value="{{ option[0] }}" required />
+      <label class="option" style="background-color: {% if show_feedback and option[0] in correct_answers %}#d4edda{% elif show_feedback and option[0] in user_answers %}#f8d7da{% else %}inherit{% endif %};">
+        <input type="{{ input_type }}" name="selected_answer" value="{{ option[0] }}" {% if input_type == 'radio' %}required{% endif %} {% if show_feedback and option[0] in user_answers %}checked{% endif %} {% if show_feedback %}disabled{% endif %} />
         <span>{{ option }}</span>
       </label>
     {% endfor %}
-    <button class="button" type="submit">Submit Answer</button>
+    <button class="button" type="submit" {% if show_feedback %}style="display: none;"{% endif %}>Submit Answer</button>
   </form>
+  {% if show_feedback %}
+  <div class="explanation">
+    <h3>Explanation:</h3>
+    <p>{{ explanation }}</p>
+  </div>
+  <form method="post" action="{{ url_for('next_question') }}" class="next-question">
+    <input type="hidden" name="test_id" value="{{ test_id }}" />
+    <button class="button" type="submit">{% if is_last_question %}Finish{% else %}Next Question{% endif %}</button>
+  </form>
+  {% endif %}
 </section>
+<script>
+  document.getElementById('question-panel').scrollIntoView({ behavior: 'smooth' });
+
+  const autoPauseUrl = "{{ url_for('pause_beacon') }}";
+  const selectNum = Number("{{ select_num }}") || 1;
+  const answerForm = document.querySelector('form.options');
+  if (answerForm && selectNum > 1) {
+    answerForm.addEventListener('submit', (event) => {
+      const checked = answerForm.querySelectorAll('input[type="checkbox"]:checked').length;
+      if (checked !== selectNum) {
+        event.preventDefault();
+        alert(`Please select exactly ${selectNum} answers.`);
+      }
+    });
+  }
+  const autoPauseData = new FormData();
+  autoPauseData.append('test_id', "{{ test_id }}");
+  let autoPauseSent = false;
+  let suppressAutoPause = false;
+
+  const markSuppressOnSubmit = () => {
+    suppressAutoPause = true;
+  };
+
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', markSuppressOnSubmit);
+  });
+
+  const sendAutoPause = () => {
+    if (autoPauseSent || suppressAutoPause) {
+      return;
+    }
+    autoPauseSent = true;
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(autoPauseUrl, autoPauseData);
+      return;
+    }
+    fetch(autoPauseUrl, { method: 'POST', body: autoPauseData, keepalive: true });
+  };
+
+  window.addEventListener('beforeunload', sendAutoPause);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      sendAutoPause();
+    }
+  });
+</script>
 {% endblock %}

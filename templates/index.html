@@ -42,8 +42,8 @@
       {% for test in paused_tests %}
         <div class="list-item">
           <div>
-            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
-            <p>Started {{ test['started_at']|date_only }} · {{ test['total_questions'] }} questions</p>
+            <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
+            <p>Started <strong>{{ test['started_at']|date_only }}</strong> · {{ test['total_questions'] }} questions</p>
           </div>
           <a class="button" href="{{ url_for('resume', test_id=test['id']) }}">Resume</a>
         </div>
@@ -61,10 +61,10 @@
       {% for test in recent_tests %}
         <div class="list-item">
           <div>
-            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
             <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
           </div>
-          <span class="status">{{ test['ended_at']|date_only }}</span>
+          <span class="status"><strong>{{ test['ended_at']|date_only }}</strong></span>
         </div>
       {% endfor %}
     </div>

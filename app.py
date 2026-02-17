@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -7,8 +8,7 @@ from pathlib import Path
 from flask import Flask, redirect, render_template, request, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
-QUESTIONS_PATH = BASE_DIR / "questions.json"
-SOLUTIONS_PATH = BASE_DIR / "solutions.json"
+QUESTIONS_PATH = BASE_DIR / "questions_1.json"
 DB_PATH = BASE_DIR / "study_tool.db"
 
 app = Flask(__name__)
@@ -30,6 +30,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS tests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL DEFAULT '',
                 mode TEXT NOT NULL,
                 status TEXT NOT NULL,
                 total_questions INTEGER NOT NULL,
@@ -74,12 +75,14 @@ def init_db():
             conn.execute("ALTER TABLE tests ADD COLUMN show_feedback INTEGER NOT NULL DEFAULT 0")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE tests ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
 
 
 QUESTIONS = load_json(QUESTIONS_PATH)
-SOLUTIONS = load_json(SOLUTIONS_PATH)
 QUESTIONS_BY_NUMBER = {q["question_number"]: q for q in QUESTIONS}
-SOLUTIONS_BY_NUMBER = {s["question_number"]: s for s in SOLUTIONS}
 QUESTION_NUMBERS = [q["question_number"] for q in QUESTIONS]
 
 init_db()
@@ -90,9 +93,9 @@ def date_only(value):
     if not value:
         return "-"
     try:
-        return datetime.fromisoformat(value).date().isoformat()
+        return datetime.fromisoformat(value).strftime("%b %d, %Y %H:%M")
     except ValueError:
-        return value[:10]
+        return value[:16]
 
 
 def db_query(query, params=(), one=False, commit=False):
@@ -104,6 +107,18 @@ def db_query(query, params=(), one=False, commit=False):
         if one:
             return cursor.fetchone()
         return cursor.fetchall()
+
+
+def normalize_answers(value):
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [item.strip().upper() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        parts = re.split(r"[,&]", value)
+        normalized = [part.strip().upper() for part in parts]
+        return [part for part in normalized if part]
+    return []
 
 
 def build_order(mode):
@@ -176,14 +191,17 @@ def mark_paused(test_id):
     test = db_query("SELECT last_resume_at, total_elapsed_seconds FROM tests WHERE id = ?", (test_id,), one=True)
     progress = get_progress(test_id)
     total_elapsed = test["total_elapsed_seconds"]
+
     if test["last_resume_at"]:
         elapsed_delta = (datetime.fromisoformat(now) - datetime.fromisoformat(test["last_resume_at"]))
         total_elapsed += elapsed_delta.total_seconds()
+
     if progress and progress["current_question_started_at"]:
-        question_elapsed = progress["current_question_elapsed_seconds"]
+        question_elapsed = progress["current_question_elapsed_seconds"] or 0
         q_delta = (datetime.fromisoformat(now) - datetime.fromisoformat(progress["current_question_started_at"]))
         question_elapsed += q_delta.total_seconds()
         update_progress(test_id, progress["current_index"], None, question_elapsed)
+
     db_query(
         """
         UPDATE tests SET status = ?, last_resume_at = ?, total_elapsed_seconds = ? WHERE id = ?
@@ -210,11 +228,11 @@ def resume_test(test_id):
 @app.route("/")
 def home():
     paused_tests = db_query(
-        "SELECT id, mode, started_at, total_questions FROM tests WHERE status = 'paused' ORDER BY started_at DESC"
+        "SELECT id, name, mode, started_at, total_questions FROM tests WHERE status = 'paused' ORDER BY started_at DESC"
     )
     recent_tests = db_query(
         """
-        SELECT id, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
+        SELECT id, name, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
         FROM tests
         WHERE status = 'completed'
         ORDER BY ended_at DESC
@@ -254,6 +272,39 @@ def pause():
     return redirect(url_for("home"))
 
 
+@app.route("/rename_test", methods=["POST"])
+def rename_test():
+    test_id = request.form.get("test_id", type=int)
+    name = (request.form.get("name") or "").strip()
+    if not test_id:
+        return redirect(url_for("history"))
+    if not name:
+        test = db_query("SELECT mode, started_at FROM tests WHERE id = ?", (test_id,), one=True)
+        if test:
+            started_at = test["started_at"]
+            name = f"{test['mode'].replace('_', ' ').title()} {datetime.fromisoformat(started_at).strftime('%b %d, %Y')}"
+        else:
+            name = "Untitled Test"
+    if len(name) > 80:
+        name = name[:80]
+    db_query("UPDATE tests SET name = ? WHERE id = ?", (name, test_id), commit=True)
+    return redirect(url_for("history"))
+
+
+@app.route("/pause_beacon", methods=["POST"])
+def pause_beacon():
+    test_id = request.form.get("test_id", type=int)
+    if not test_id:
+        payload = request.get_json(silent=True) or {}
+        try:
+            test_id = int(payload.get("test_id"))
+        except (TypeError, ValueError):
+            test_id = None
+    if test_id:
+        mark_paused(test_id)
+    return ("", 204)
+
+
 @app.route("/question")
 def question():
     test_id = request.args.get("test_id", type=int)
@@ -272,7 +323,9 @@ def question():
 
     question_number = progress["order"][progress["current_index"]]
     question = QUESTIONS_BY_NUMBER.get(question_number)
-    solution = SOLUTIONS_BY_NUMBER.get(question_number, {})
+    correct_answers = normalize_answers(question.get("solution"))
+    is_last_question = (progress["current_index"] + 1) >= len(progress["order"])
+    select_num = question.get("select_num", 1)
 
     return render_template(
         "question.html",
@@ -282,16 +335,20 @@ def question():
         options=question["options"],
         current_index=progress["current_index"] + 1,
         total_questions=len(progress["order"]),
-        answer_letter=solution.get("answer_letter"),
-        explanation=solution.get("explaination_text"),
+        correct_answers=correct_answers,
+        explanation=question.get("explanation", ""),
+        show_feedback=False,
+        user_answers=[],
+        is_last_question=is_last_question,
+        select_num=select_num,
     )
 
 
 @app.route("/answer", methods=["POST"])
 def answer():
     test_id = request.form.get("test_id", type=int)
-    selected = request.form.get("selected_answer", "").strip().upper()
-    if not test_id or not selected:
+    selected_answers = normalize_answers(request.form.getlist("selected_answer"))
+    if not test_id:
         return redirect(url_for("home"))
 
     test = db_query("SELECT * FROM tests WHERE id = ?", (test_id,), one=True)
@@ -300,9 +357,13 @@ def answer():
         return redirect(url_for("home"))
 
     question_number = progress["order"][progress["current_index"]]
-    solution = SOLUTIONS_BY_NUMBER.get(question_number, {})
-    correct_answer = solution.get("answer_letter")
-    is_correct = 1 if correct_answer and selected == correct_answer else 0
+    question = QUESTIONS_BY_NUMBER.get(question_number, {})
+    select_num = question.get("select_num", 1)
+    if not selected_answers or len(selected_answers) != select_num:
+        return redirect(url_for("question", test_id=test_id))
+    correct_answers = normalize_answers(question.get("solution"))
+    selected_answer = ",".join(selected_answers)
+    is_correct = 1 if correct_answers and set(selected_answers) == set(correct_answers) else 0
 
     now = utc_now_iso()
     started_at = progress["current_question_started_at"] or now
@@ -318,9 +379,8 @@ def answer():
             INSERT INTO test_answers (test_id, question_number, selected_answer, correct_answer, is_correct, started_at, ended_at, elapsed_seconds)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (test_id, question_number, selected, correct_answer, is_correct, started_at, now, elapsed),
+            (test_id, question_number, selected_answer, ",".join(correct_answers), is_correct, started_at, now, elapsed),
         )
-        answer_id = cursor.lastrowid
         conn.commit()
 
     if is_correct:
@@ -328,6 +388,26 @@ def answer():
             "UPDATE tests SET correct_count = correct_count + 1 WHERE id = ?",
             (test_id,),
             commit=True,
+        )
+
+    if test["show_feedback"] and test["mode"] in {"random_questions", "in_order_questions"}:
+        update_progress(test_id, progress["current_index"], None, elapsed)
+        is_last_question = (progress["current_index"] + 1) >= len(progress["order"])
+        select_num = question.get("select_num", 1)
+        return render_template(
+            "question.html",
+            test_id=test_id,
+            question_number=question_number,
+            question_text=question.get("question_text", ""),
+            options=question.get("options", []),
+            current_index=progress["current_index"] + 1,
+            total_questions=len(progress["order"]),
+            correct_answers=correct_answers,
+            explanation=question.get("explanation", ""),
+            show_feedback=True,
+            user_answers=selected_answers,
+            is_last_question=is_last_question,
+            select_num=select_num,
         )
 
     next_index = progress["current_index"] + 1
@@ -347,39 +427,45 @@ def answer():
             commit=True,
         )
         update_progress(test_id, next_index, None, 0)
-        if test["show_feedback"] and test["mode"] in {"random_questions", "in_order_questions"}:
-            return redirect(url_for("feedback", answer_id=answer_id))
         return redirect(url_for("history"))
 
     update_progress(test_id, next_index, now, 0)
-    if test["show_feedback"] and test["mode"] in {"random_questions", "in_order_questions"}:
-        return redirect(url_for("feedback", answer_id=answer_id))
     return redirect(url_for("question", test_id=test_id))
 
 
-@app.route("/feedback")
-def feedback():
-    answer_id = request.args.get("answer_id", type=int)
-    if not answer_id:
+@app.route("/next", methods=["POST"])
+def next_question():
+    test_id = request.form.get("test_id", type=int)
+    if not test_id:
         return redirect(url_for("home"))
-    answer_row = db_query("SELECT * FROM test_answers WHERE id = ?", (answer_id,), one=True)
-    if not answer_row:
-        return redirect(url_for("home"))
-    test = db_query("SELECT * FROM tests WHERE id = ?", (answer_row["test_id"],), one=True)
-    question = QUESTIONS_BY_NUMBER.get(answer_row["question_number"], {})
-    solution = SOLUTIONS_BY_NUMBER.get(answer_row["question_number"], {})
 
-    return render_template(
-        "feedback.html",
-        test_id=answer_row["test_id"],
-        question_number=answer_row["question_number"],
-        question_text=question.get("question_text", ""),
-        selected_answer=answer_row["selected_answer"],
-        correct_answer=answer_row["correct_answer"],
-        is_correct=answer_row["is_correct"],
-        explanation=solution.get("explaination_text", ""),
-        test_completed=test["status"] == "completed",
-    )
+    test = db_query("SELECT * FROM tests WHERE id = ?", (test_id,), one=True)
+    progress = get_progress(test_id)
+    if not test or not progress:
+        return redirect(url_for("home"))
+
+    now = utc_now_iso()
+    next_index = progress["current_index"] + 1
+    if next_index >= len(progress["order"]):
+        total_elapsed = test["total_elapsed_seconds"]
+        if test["last_resume_at"]:
+            total_elapsed += (
+                datetime.fromisoformat(now) - datetime.fromisoformat(test["last_resume_at"])
+            ).total_seconds()
+        db_query(
+            """
+            UPDATE tests
+            SET status = ?, ended_at = ?, total_elapsed_seconds = ?
+            WHERE id = ?
+            """,
+            ("completed", now, total_elapsed, test_id),
+            commit=True,
+        )
+        update_progress(test_id, next_index, None, 0)
+        return redirect(url_for("history"))
+
+    update_progress(test_id, next_index, now, 0)
+    return redirect(url_for("question", test_id=test_id))
 
 
 @app.route("/history")
@@ -395,14 +481,14 @@ def history():
     )
     tests = db_query(
         """
-        SELECT id, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
+        SELECT id, name, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
         FROM tests
         ORDER BY started_at DESC
         """
     )
     recent_tests = db_query(
         """
-        SELECT id, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
+        SELECT id, name, mode, status, total_questions, correct_count, started_at, ended_at, total_elapsed_seconds
         FROM tests
         WHERE status = 'completed'
         ORDER BY ended_at DESC
@@ -427,11 +513,12 @@ def history():
 @app.route("/review")
 def review():
     test_id = request.args.get("test_id", type=int)
+    answer_id = request.args.get("answer_id", type=int)
     params = ()
     query = (
         """
         SELECT ta.id, ta.test_id, ta.question_number, ta.selected_answer, ta.correct_answer, ta.is_correct,
-               ta.elapsed_seconds, t.mode, t.started_at
+               ta.elapsed_seconds, t.mode, t.started_at, t.name
         FROM test_answers ta
         JOIN tests t ON t.id = ta.test_id
         """
@@ -446,8 +533,10 @@ def review():
         question = QUESTIONS_BY_NUMBER.get(row["question_number"], {})
         items.append(
             {
+                "id": row["id"],
                 "test_id": row["test_id"],
                 "mode": row["mode"],
+                "name": row["name"],
                 "started_at": row["started_at"],
                 "question_number": row["question_number"],
                 "question_text": question.get("question_text", ""),
@@ -458,10 +547,46 @@ def review():
             }
         )
 
+    selected_item = None
+    if answer_id:
+        detail_params = (answer_id,)
+        detail_query = (
+            """
+            SELECT ta.id, ta.test_id, ta.question_number, ta.selected_answer, ta.correct_answer, ta.is_correct,
+                   ta.elapsed_seconds, t.mode, t.started_at, t.name
+            FROM test_answers ta
+            JOIN tests t ON t.id = ta.test_id
+            WHERE ta.id = ?
+            """
+        )
+        if test_id:
+            detail_query += " AND ta.test_id = ?"
+            detail_params = (answer_id, test_id)
+        row = db_query(detail_query, detail_params, one=True)
+        if row:
+            question = QUESTIONS_BY_NUMBER.get(row["question_number"], {})
+            selected_item = {
+                "id": row["id"],
+                "test_id": row["test_id"],
+                "mode": row["mode"],
+                "name": row["name"],
+                "started_at": row["started_at"],
+                "question_number": row["question_number"],
+                "question_text": question.get("question_text", ""),
+                "options": question.get("options", []),
+                "user_answers": normalize_answers(row["selected_answer"]),
+                "correct_answers": normalize_answers(row["correct_answer"]),
+                "is_correct": row["is_correct"],
+                "elapsed_seconds": row["elapsed_seconds"],
+                "explanation": question.get("explanation", ""),
+                "select_num": question.get("select_num", 1),
+            }
+
     return render_template(
         "review.html",
         items=items,
         test_id=test_id,
+        selected_item=selected_item,
     )
 
 

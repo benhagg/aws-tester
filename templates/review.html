@@ -9,21 +9,52 @@
   {% if items %}
     <div class="list">
       {% for item in items %}
-        <div class="list-item">
+        <div class="list-item" {% if selected_item and selected_item['id'] == item['id'] %}style="border-color: #1f7a3d;"{% endif %}>
           <div>
             <strong>Q{{ item['question_number'] }}</strong>
-            <p class="muted">{{ item['question_text'] }}</p>
-            <p class="muted">{{ item['mode'].replace('_', ' ').title() }} · {{ item['started_at']|date_only }}</p>
+            <p>{{ item['question_text'] }}</p>
+            <p class="muted">
+              {{ item['name'] or item['mode'].replace('_', ' ').title() }} · <strong>{{ item['started_at']|date_only }}</strong>
+            </p>
           </div>
           <div class="meta">
             <span class="status-pill {{ 'ok' if item['is_correct'] else 'bad' }}">
               {{ 'OK' if item['is_correct'] else 'X' }}
             </span>
             <span>{{ item['elapsed_seconds']|round(1) }}s</span>
+            {% if test_id %}
+              <a class="ghost" href="{{ url_for('review', test_id=test_id, answer_id=item['id']) }}">View</a>
+            {% else %}
+              <a class="ghost" href="{{ url_for('review', answer_id=item['id']) }}">View</a>
+            {% endif %}
           </div>
         </div>
       {% endfor %}
     </div>
+    {% if selected_item %}
+      <section class="panel">
+        <div class="section-header">
+          <h3>Q{{ selected_item['question_number'] }}</h3>
+          <span class="status-pill {{ 'ok' if selected_item['is_correct'] else 'bad' }}">
+            {{ 'OK' if selected_item['is_correct'] else 'X' }}
+          </span>
+        </div>
+        <p class="question-text">{{ selected_item['question_text'] }}</p>
+        <div class="options">
+          {% set input_type = 'checkbox' if selected_item['select_num']|int > 1 else 'radio' %}
+          {% for option in selected_item['options'] %}
+            <label class="option" style="background-color: {% if option[0] in selected_item['correct_answers'] %}#d4edda{% elif option[0] in selected_item['user_answers'] %}#f8d7da{% else %}inherit{% endif %};">
+              <input type="{{ input_type }}" disabled {% if option[0] in selected_item['user_answers'] %}checked{% endif %} />
+              <span>{{ option }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <div class="explanation">
+          <h3>Explanation:</h3>
+          <p>{{ selected_item['explanation'] }}</p>
+        </div>
+      </section>
+    {% endif %}
   {% else %}
     <p class="muted">No answers yet.</p>
   {% endif %}

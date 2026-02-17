@@ -29,7 +29,7 @@
       {% for test in recent_tests %}
         <div class="list-item">
           <div>
-            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
             <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
           </div>
           <a class="button" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
@@ -48,13 +48,18 @@
       {% for test in tests %}
         <div class="list-item">
           <div>
-            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
             <p>Status: {{ test['status'].title() }} · Score: {{ test['correct_count'] }} / {{ test['total_questions'] }}</p>
-            <p class="muted">Started {{ test['started_at']|date_only }} · Ended {{ test['ended_at']|date_only }}</p>
+            <p class="muted">Started <strong>{{ test['started_at']|date_only }}</strong> · Ended <strong>{{ test['ended_at']|date_only }}</strong></p>
           </div>
           <div class="meta">
             <span>{{ test['total_elapsed_seconds']|round(1) }}s</span>
             <a class="ghost" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
+            <form method="post" action="{{ url_for('rename_test') }}" class="inline-form">
+              <input type="hidden" name="test_id" value="{{ test['id'] }}" />
+              <input type="text" name="name" value="{{ test['name'] or '' }}" placeholder="Rename test" maxlength="80" />
+              <button class="ghost" type="submit">Rename</button>
+            </form>
           </div>
         </div>
       {% endfor %}

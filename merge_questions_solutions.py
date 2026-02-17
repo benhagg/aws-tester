@@ -1,4 +1,5 @@
 import json
+import re
 
 # Load questions.json
 def load_json(file_path):
@@ -17,11 +18,14 @@ def merge_questions_and_solutions(questions, solutions):
 
         if solution:
 
+            # Adjust to include 'answer_letter' as solution and 'explaination_text'
             merged_data.append({
                 'question_number': question_number,
                 'question_text': question['question_text'],
                 'options': question.get('options', []),
-                'solution': solution.get('solution', None)
+                'solution': solution.get('answer_letter', None),
+                'explanation': solution.get('explaination_text', None),
+                'select_num': question.get('select_num', 1)  # Default to 1 if not provided
             })
 
     return merged_data

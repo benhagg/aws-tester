@@ -1,17 +1,17 @@
 import json
-import os
+from pathlib import Path
 
 def load_data(file_path):
     """Load JSON data from a file."""
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding="utf-8") as file:
         return json.load(file)
 
 def save_user_response(history_file, question_number, user_answer, correct_answer):
     """Save the user's response to a history file."""
-    if not os.path.exists(history_file):
+    if not Path(history_file).exists():
         history = []
     else:
-        with open(history_file, 'r') as file:
+        with open(history_file, 'r', encoding="utf-8") as file:
             history = json.load(file)
 
     history.append({
@@ -21,7 +21,7 @@ def save_user_response(history_file, question_number, user_answer, correct_answe
         "is_correct": user_answer == correct_answer
     })
 
-    with open(history_file, 'w') as file:
+    with open(history_file, 'w', encoding="utf-8") as file:
         json.dump(history, file, indent=4)
 
 def run_study_tool(questions_file, solutions_file, history_file):
@@ -64,8 +64,10 @@ def run_study_tool(questions_file, solutions_file, history_file):
     print("\nThank you for using the AWS Study Tool! Good luck with your studies!\n")
 
 if __name__ == "__main__":
-    QUESTIONS_FILE = "questions.json"
-    SOLUTIONS_FILE = "solutions.json"
-    HISTORY_FILE = "answer_history.json"
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DATA_DIR = BASE_DIR / "data"
+    QUESTIONS_FILE = DATA_DIR / "questions.json"
+    SOLUTIONS_FILE = DATA_DIR / "solutions.json"
+    HISTORY_FILE = DATA_DIR / "answer_history.json"
 
     run_study_tool(QUESTIONS_FILE, SOLUTIONS_FILE, HISTORY_FILE)

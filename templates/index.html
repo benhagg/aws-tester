@@ -1,29 +1,133 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .study-session-form {
+    position: relative;
+  }
+  
+  .form-field {
+    margin-bottom: 1rem;
+  }
+  
+  .form-field label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .form-field input[type="number"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  .question-selector-toggle {
+    cursor: pointer;
+    color: #007bff;
+    text-decoration: underline;
+    margin: 0.5rem 0;
+    display: inline-block;
+  }
+  
+  .question-selector-toggle:hover {
+    color: #0056b3;
+  }
+  
+  .question-selector {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .question-selector.visible {
+    display: block;
+  }
+  
+  .question-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .question-list label {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0;
+  }
+  
+  .question-list label:hover {
+    background-color: #e9ecef;
+  }
+  
+  .question-list input[type="checkbox"] {
+    margin-right: 0.25rem;
+  }
+  
+  .selector-controls {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+
+</style>
+
 <section class="panel">
   <h2>Start a Study Session</h2>
   <div class="card-grid">
-    <form class="card card-form" method="post" action="{{ url_for('start') }}">
+    <form class="card card-form study-session-form" method="post" action="{{ url_for('start') }}">
       <input type="hidden" name="mode" value="random_questions" />
       <h3>Random Questions</h3>
       <p>Shuffle the full question bank.</p>
+      
+      <div class="form-field">
+        <label for="random-num-questions">Number of Questions (optional):</label>
+        <input type="number" id="random-num-questions" name="num_questions" min="1" max="500" placeholder="Leave blank for all" />
+      </div>
+      
       <label class="toggle">
         <input type="checkbox" name="show_feedback" value="1" checked />
         Show correctness + explanation after each answer
       </label>
       <button class="button" type="submit">Start</button>
     </form>
-    <form class="card card-form" method="post" action="{{ url_for('start') }}">
+    
+    <form class="card card-form study-session-form" method="post" action="{{ url_for('start') }}">
       <input type="hidden" name="mode" value="in_order_questions" />
       <h3>In Order Questions</h3>
       <p>Work through every question sequentially.</p>
+      
+      <div class="form-field">
+        <label for="inorder-num-questions">Number of Questions (optional):</label>
+        <input type="number" id="inorder-num-questions" name="num_questions" min="1" max="500" placeholder="Leave blank for all" />
+      </div>
+      
+      <div class="form-field">
+        <label for="inorder-question-range">Question Range (optional):</label>
+        <input type="text" id="inorder-question-range" name="question_range" placeholder="e.g., 1-50 or 1-30, 100-150" />
+        <p class="muted" style="font-size: 0.85rem; margin-top: 0.25rem;">Use ranges like "1-50" or multiple ranges separated by commas</p>
+      </div>
+      <input type="hidden" name="selected_questions" id="inorder-selected" />
+      
       <label class="toggle">
         <input type="checkbox" name="show_feedback" value="1" checked />
         Show correctness + explanation after each answer
       </label>
       <button class="button" type="submit">Start</button>
     </form>
+    
     <a class="card" href="{{ url_for('start', mode='full_test_in_order') }}">
       <h3>Full Test (In Order)</h3>
       <p>65 questions, sequential pacing.</p>
@@ -34,6 +138,50 @@
     </a>
   </div>
 </section>
+
+<script>
+  // Handle question range input
+  document.addEventListener('DOMContentLoaded', function() {
+    const rangeInput = document.getElementById('inorder-question-range');
+    if (rangeInput) {
+      rangeInput.addEventListener('change', function() {
+        updateQuestionRangeInput();
+      });
+      rangeInput.addEventListener('blur', function() {
+        updateQuestionRangeInput();
+      });
+    }
+  });
+  
+  function parseRangeInput(rangeStr) {
+    if (!rangeStr || !rangeStr.trim()) return [];
+    
+    const ranges = rangeStr.split(',').map(s => s.trim());
+    const questions = new Set();
+    
+    ranges.forEach(range => {
+      const match = range.match(/^(\d+)(?:-(\d+))?$/);
+      if (match) {
+        const start = parseInt(match[1]);
+        const end = match[2] ? parseInt(match[2]) : start;
+        for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+          questions.add(i);
+        }
+      }
+    });
+    
+    return Array.from(questions).sort((a, b) => a - b);
+  }
+  
+  function updateQuestionRangeInput() {
+    const rangeInput = document.getElementById('inorder-question-range');
+    const hiddenInput = document.getElementById('inorder-selected');
+    if (!rangeInput || !hiddenInput) return;
+    
+    const selectedQuestions = parseRangeInput(rangeInput.value);
+    hiddenInput.value = selectedQuestions.length > 0 ? JSON.stringify(selectedQuestions) : '';
+  }
+</script>
 
 <section class="panel">
   <h2>Paused Sessions</h2>
@@ -62,7 +210,7 @@
         <div class="list-item">
           <div>
             <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
-            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
+            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct ({{ test['correct_count']|percentage(test['total_questions']) }}%) · {{ test['total_elapsed_seconds']|format_time }}</p>
           </div>
           <span class="status"><strong>{{ test['ended_at']|date_only }}</strong></span>
         </div>

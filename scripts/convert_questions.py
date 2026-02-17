@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 # Function to convert questions.txt to questions.json
 def convert_questions_to_json(input_file, output_file):
@@ -55,8 +56,9 @@ def convert_questions_to_json(input_file, output_file):
         json.dump(questions, file, indent=2)
 
 # File paths
-input_file = "questions.txt"
-output_file = "questions.json"
+base_dir = Path(__file__).resolve().parent.parent
+input_file = base_dir / "raw_data" / "questions.txt"
+output_file = base_dir / "data" / "questions.json"
 
 # Convert the file
 convert_questions_to_json(input_file, output_file)

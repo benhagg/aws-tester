@@ -8,7 +8,8 @@ from pathlib import Path
 from flask import Flask, redirect, render_template, request, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
-QUESTIONS_PATH = BASE_DIR / "questions_1.json"
+DATA_DIR = BASE_DIR / "data"
+QUESTIONS_PATH = DATA_DIR / "questions_merged.json"
 DB_PATH = BASE_DIR / "study_tool.db"
 
 app = Flask(__name__)
@@ -79,6 +80,10 @@ def init_db():
             conn.execute("ALTER TABLE tests ADD COLUMN name TEXT NOT NULL DEFAULT ''")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE test_answers ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
 
 QUESTIONS = load_json(QUESTIONS_PATH)
@@ -93,9 +98,59 @@ def date_only(value):
     if not value:
         return "-"
     try:
-        return datetime.fromisoformat(value).strftime("%b %d, %Y %H:%M")
+        from datetime import timezone
+        # Parse the UTC ISO format time
+        dt = datetime.fromisoformat(value)
+        # If the datetime is naive (no timezone info), assume it's UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        # Convert to local timezone
+        dt_local = dt.astimezone()
+        # Format with locale-friendly month name: "14 Feb 2026, 9:30 AM"
+        months = {
+            1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
+            7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+        }
+        month = months.get(dt_local.month, "")
+        hour_12 = dt_local.hour % 12 or 12
+        am_pm = "AM" if dt_local.hour < 12 else "PM"
+        return f"{dt_local.day} {month} {dt_local.year}, {hour_12}:{dt_local.minute:02d} {am_pm}"
     except ValueError:
         return value[:16]
+
+
+@app.template_filter("format_time")
+def format_time(seconds):
+    """Format seconds into human-readable time format.
+    
+    Examples:
+    - 56s
+    - 56min 56sec
+    - 1hr 3min 56sec
+    """
+    if not seconds:
+        return "0s"
+    
+    total_seconds = int(round(seconds))
+    
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    
+    if hours > 0:
+        return f"{hours}hr {minutes}min {secs}sec"
+    elif minutes > 0:
+        return f"{minutes}min {secs}sec"
+    else:
+        return f"{secs}s"
+
+
+@app.template_filter("percentage")
+def percentage(correct, total):
+    """Calculate percentage of correct answers."""
+    if total == 0:
+        return 0
+    return round((correct / total) * 100)
 
 
 def db_query(query, params=(), one=False, commit=False):
@@ -121,22 +176,53 @@ def normalize_answers(value):
     return []
 
 
-def build_order(mode):
+def build_order(mode, num_questions=None, selected_questions=None):
+    """Build question order based on mode and optional custom parameters.
+    
+    Args:
+        mode: Study mode (random_questions, in_order_questions, full_test_in_order, full_test_random)
+        num_questions: Optional custom number of questions to include
+        selected_questions: Optional list of specific question numbers to include
+    """
     ordered = sorted(QUESTION_NUMBERS)
-    if mode == "random_questions":
-        random.shuffle(ordered)
-        return ordered
-    if mode == "in_order_questions":
-        return ordered
-    if mode == "full_test_in_order":
-        return ordered[:65]
-    if mode == "full_test_random":
-        return random.sample(ordered, min(65, len(ordered)))
+    
+    # Use selected questions if provided
+    if selected_questions:
+        try:
+            if isinstance(selected_questions, str):
+                selected_questions = json.loads(selected_questions) if selected_questions.startswith('[') else [int(q.strip()) for q in selected_questions.split(',')]
+            ordered = [q for q in ordered if q in selected_questions]
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+    
+    # Limit to num_questions if specified
+    if num_questions and num_questions > 0:
+        num_questions = min(int(num_questions), len(ordered))
+        if mode == "random_questions":
+            random.shuffle(ordered)
+            ordered = ordered[:num_questions]
+        elif mode == "in_order_questions":
+            ordered = ordered[:num_questions]
+        elif mode == "full_test_random":
+            ordered = random.sample(ordered, min(num_questions, len(ordered)))
+        elif mode == "full_test_in_order":
+            ordered = ordered[:num_questions]
+    else:
+        # Default behavior when num_questions not specified
+        if mode == "random_questions":
+            random.shuffle(ordered)
+        elif mode == "in_order_questions":
+            pass
+        elif mode == "full_test_in_order":
+            ordered = ordered[:65]
+        elif mode == "full_test_random":
+            ordered = random.sample(ordered, min(65, len(ordered)))
+    
     return ordered
 
 
-def create_test(mode, show_feedback=False):
-    order = build_order(mode)
+def create_test(mode, show_feedback=False, num_questions=None, selected_questions=None):
+    order = build_order(mode, num_questions=num_questions, selected_questions=selected_questions)
     started_at = utc_now_iso()
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
@@ -239,7 +325,7 @@ def home():
         LIMIT 5
         """
     )
-    return render_template("index.html", paused_tests=paused_tests, recent_tests=recent_tests)
+    return render_template("index.html", paused_tests=paused_tests, recent_tests=recent_tests, question_numbers=QUESTION_NUMBERS)
 
 
 @app.route("/start", methods=["GET", "POST"])
@@ -251,7 +337,17 @@ def start():
     show_feedback = False
     if allow_feedback:
         show_feedback = request.values.get("show_feedback") == "1"
-    test_id = create_test(mode, show_feedback=show_feedback)
+    
+    # Get custom parameters
+    num_questions = request.values.get("num_questions")
+    if num_questions:
+        try:
+            num_questions = int(num_questions)
+        except (ValueError, TypeError):
+            num_questions = None
+    selected_questions = request.values.get("selected_questions")
+    
+    test_id = create_test(mode, show_feedback=show_feedback, num_questions=num_questions, selected_questions=selected_questions)
     return redirect(url_for("question", test_id=test_id))
 
 
@@ -326,6 +422,14 @@ def question():
     correct_answers = normalize_answers(question.get("solution"))
     is_last_question = (progress["current_index"] + 1) >= len(progress["order"])
     select_num = question.get("select_num", 1)
+    
+    # Check if this question is flagged
+    answer_row = db_query(
+        "SELECT flagged FROM test_answers WHERE test_id = ? AND question_number = ?",
+        (test_id, question_number),
+        one=True
+    )
+    is_flagged_before_answer = answer_row["flagged"] if answer_row else False
 
     return render_template(
         "question.html",
@@ -341,6 +445,9 @@ def question():
         user_answers=[],
         is_last_question=is_last_question,
         select_num=select_num,
+        answer_id=None,
+        is_flagged_before_answer=is_flagged_before_answer,
+        is_flagged=False,
     )
 
 
@@ -373,14 +480,35 @@ def answer():
             datetime.fromisoformat(now) - datetime.fromisoformat(progress["current_question_started_at"])
         ).total_seconds()
 
+    # Check if there's a placeholder flagged entry for this question
+    existing = db_query(
+        "SELECT id, flagged FROM test_answers WHERE test_id = ? AND question_number = ?",
+        (test_id, question_number),
+        one=True
+    )
+    
     with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO test_answers (test_id, question_number, selected_answer, correct_answer, is_correct, started_at, ended_at, elapsed_seconds)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (test_id, question_number, selected_answer, ",".join(correct_answers), is_correct, started_at, now, elapsed),
-        )
+        if existing:
+            # Update the existing placeholder entry
+            cursor = conn.execute(
+                """
+                UPDATE test_answers 
+                SET selected_answer = ?, correct_answer = ?, is_correct = ?, started_at = ?, ended_at = ?, elapsed_seconds = ?
+                WHERE id = ?
+                """,
+                (selected_answer, ",".join(correct_answers), is_correct, started_at, now, elapsed, existing["id"]),
+            )
+            answer_id = existing["id"]
+        else:
+            # Create new entry
+            cursor = conn.execute(
+                """
+                INSERT INTO test_answers (test_id, question_number, selected_answer, correct_answer, is_correct, started_at, ended_at, elapsed_seconds)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (test_id, question_number, selected_answer, ",".join(correct_answers), is_correct, started_at, now, elapsed),
+            )
+            answer_id = cursor.lastrowid
         conn.commit()
 
     if is_correct:
@@ -394,6 +522,13 @@ def answer():
         update_progress(test_id, progress["current_index"], None, elapsed)
         is_last_question = (progress["current_index"] + 1) >= len(progress["order"])
         select_num = question.get("select_num", 1)
+        # Get the flag state for this answer
+        answer_flag_row = db_query(
+            "SELECT flagged FROM test_answers WHERE id = ?",
+            (answer_id,),
+            one=True
+        )
+        is_flagged = answer_flag_row["flagged"] if answer_flag_row else False
         return render_template(
             "question.html",
             test_id=test_id,
@@ -408,6 +543,9 @@ def answer():
             user_answers=selected_answers,
             is_last_question=is_last_question,
             select_num=select_num,
+            answer_id=answer_id,
+            is_flagged_before_answer=False,
+            is_flagged=is_flagged,
         )
 
     next_index = progress["current_index"] + 1
@@ -462,7 +600,7 @@ def next_question():
             commit=True,
         )
         update_progress(test_id, next_index, None, 0)
-        return redirect(url_for("history"))
+        return redirect(url_for("review", test_id=test_id))
 
     update_progress(test_id, next_index, now, 0)
     return redirect(url_for("question", test_id=test_id))
@@ -518,7 +656,7 @@ def review():
     query = (
         """
         SELECT ta.id, ta.test_id, ta.question_number, ta.selected_answer, ta.correct_answer, ta.is_correct,
-               ta.elapsed_seconds, t.mode, t.started_at, t.name
+               ta.elapsed_seconds, ta.flagged, t.mode, t.started_at, t.name
         FROM test_answers ta
         JOIN tests t ON t.id = ta.test_id
         """
@@ -544,8 +682,14 @@ def review():
                 "correct_answer": row["correct_answer"],
                 "is_correct": row["is_correct"],
                 "elapsed_seconds": row["elapsed_seconds"],
+                "flagged": row["flagged"],
             }
         )
+
+    # Calculate correct count and total count for the test
+    correct_count = sum(1 for item in items if item["is_correct"])
+    total_count = len(items)
+    percentage = round((correct_count / total_count * 100) if total_count > 0 else 0)
 
     selected_item = None
     if answer_id:
@@ -553,7 +697,7 @@ def review():
         detail_query = (
             """
             SELECT ta.id, ta.test_id, ta.question_number, ta.selected_answer, ta.correct_answer, ta.is_correct,
-                   ta.elapsed_seconds, t.mode, t.started_at, t.name
+                   ta.elapsed_seconds, ta.flagged, t.mode, t.started_at, t.name
             FROM test_answers ta
             JOIN tests t ON t.id = ta.test_id
             WHERE ta.id = ?
@@ -580,14 +724,207 @@ def review():
                 "elapsed_seconds": row["elapsed_seconds"],
                 "explanation": question.get("explanation", ""),
                 "select_num": question.get("select_num", 1),
+                "flagged": row["flagged"],
             }
 
     return render_template(
         "review.html",
         items=items,
         test_id=test_id,
+        correct_count=correct_count,
+        total_count=total_count,
+        percentage=percentage,
         selected_item=selected_item,
+        QUESTIONS_BY_NUMBER=QUESTIONS_BY_NUMBER,
     )
+
+
+@app.route("/toggle_flag_by_question", methods=["POST"])
+def toggle_flag_by_question():
+    """Toggle flag status for a question before answering."""
+    test_id = request.form.get("test_id", type=int)
+    question_number = request.form.get("question_number", type=int)
+    
+    if not test_id or not question_number:
+        return ("", 400)
+    
+    # Check if an answer already exists for this question
+    row = db_query(
+        "SELECT id, flagged FROM test_answers WHERE test_id = ? AND question_number = ?",
+        (test_id, question_number),
+        one=True
+    )
+    
+    if row:
+        # Update existing answer's flag
+        new_flagged = 1 - row["flagged"]
+        db_query(
+            "UPDATE test_answers SET flagged = ? WHERE id = ?",
+            (new_flagged, row["id"]),
+            commit=True
+        )
+        return ("", 204)
+    else:
+        # Create a placeholder flagged entry for pre-answer flagging
+        # This will be updated when the actual answer is submitted
+        now = utc_now_iso()
+        db_query(
+            """
+            INSERT INTO test_answers (test_id, question_number, selected_answer, correct_answer, is_correct, started_at, ended_at, elapsed_seconds, flagged)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (test_id, question_number, "", "", 0, now, now, 0, 1),
+            commit=True
+        )
+        return ("", 204)
+
+
+@app.route("/toggle_flag", methods=["POST"])
+def toggle_flag():
+    answer_id = request.form.get("answer_id", type=int)
+    if not answer_id:
+        return ("", 400)
+    
+    row = db_query("SELECT flagged FROM test_answers WHERE id = ?", (answer_id,), one=True)
+    if not row:
+        return ("", 404)
+    
+    new_flagged = 1 - row["flagged"]
+    db_query("UPDATE test_answers SET flagged = ? WHERE id = ?", (new_flagged, answer_id), commit=True)
+    return ("", 204)
+
+
+@app.route("/get_sidebar_data", methods=["GET"])
+def get_sidebar_data():
+    """Get sidebar data for question navigation."""
+    test_id = request.args.get("test_id", type=int)
+    if not test_id:
+        return {"error": "Missing test_id"}, 400
+    
+    test = db_query("SELECT show_feedback FROM tests WHERE id = ?", (test_id,), one=True)
+    if not test:
+        return {"error": "Test not found"}, 404
+    
+    progress = get_progress(test_id)
+    if not progress:
+        return {"error": "No progress found"}, 404
+    
+    # Get all answers for this test (including placeholder flagged entries)
+    answers = db_query(
+        "SELECT question_number, is_correct, flagged, selected_answer FROM test_answers WHERE test_id = ?",
+        (test_id,)
+    )
+    
+    # Create a map of question_number -> answer data
+    answer_map = {}
+    for answer in answers:
+        answer_map[answer["question_number"]] = {
+            "is_correct": answer["is_correct"],
+            "flagged": answer["flagged"],
+            "has_answer": answer["selected_answer"] != ""
+        }
+    
+    # Build sidebar data for all questions in the test
+    sidebar_data = []
+    for idx, question_number in enumerate(progress["order"]):
+        question_info = {
+            "question_number": question_number,
+            "index": idx,
+            "is_current": idx == progress["current_index"]
+        }
+        
+        # Check if question has been answered or flagged
+        if question_number in answer_map:
+            question_info["answered"] = answer_map[question_number]["has_answer"]
+            question_info["flagged"] = answer_map[question_number]["flagged"]
+            # Only include correctness if show_feedback is enabled and question has been answered
+            if test["show_feedback"] and answer_map[question_number]["has_answer"]:
+                question_info["is_correct"] = answer_map[question_number]["is_correct"]
+        else:
+            question_info["answered"] = False
+            question_info["flagged"] = False
+        
+        sidebar_data.append(question_info)
+    
+    return {"questions": sidebar_data, "show_feedback": test["show_feedback"]}, 200
+
+
+@app.route("/navigate_to_question", methods=["POST"])
+def navigate_to_question():
+    """Navigate to a specific question in the test."""
+    test_id = request.form.get("test_id", type=int)
+    target_index = request.form.get("target_index", type=int)
+    
+    if test_id is None or target_index is None:
+        return redirect(url_for("home"))
+    
+    test = db_query("SELECT * FROM tests WHERE id = ?", (test_id,), one=True)
+    if not test or test["status"] == "paused":
+        return redirect(url_for("home"))
+    
+    progress = get_progress(test_id)
+    if not progress:
+        return redirect(url_for("home"))
+    
+    # Validate target_index is within bounds
+    if target_index < 0 or target_index >= len(progress["order"]):
+        return redirect(url_for("question", test_id=test_id))
+    
+    # Update progress to the target index
+    update_progress(test_id, target_index, utc_now_iso(), 0)
+    
+    return redirect(url_for("question", test_id=test_id))
+
+
+@app.route("/copy_summary", methods=["POST"])
+def copy_summary():
+    """Generate a summary for copying to clipboard."""
+    test_id = request.form.get("test_id", type=int)
+    answer_id = request.form.get("answer_id", type=int)
+    
+    if answer_id:
+        # Copy single question
+        row = db_query(
+            "SELECT question_number FROM test_answers WHERE id = ?",
+            (answer_id,),
+            one=True
+        )
+        if not row:
+            return ("", 404)
+        
+        question = QUESTIONS_BY_NUMBER.get(row["question_number"], {})
+        summary = f"Question #{row['question_number']}\n"
+        summary += f"{question.get('question_text', '')}\n\n"
+        for option in question.get("options", []):
+            summary += f"{option}\n"
+        
+        return summary, 200, {"Content-Type": "text/plain"}
+    
+    elif test_id:
+        # Copy all flagged and incorrect questions from test
+        rows = db_query(
+            "SELECT question_number, is_correct, flagged FROM test_answers WHERE test_id = ? ORDER BY id ASC",
+            (test_id,)
+        )
+        
+        summary_parts = []
+        for row in rows:
+            # Include if flagged OR incorrect
+            if row["flagged"] or not row["is_correct"]:
+                question = QUESTIONS_BY_NUMBER.get(row["question_number"], {})
+                summary_parts.append(f"Question #{row['question_number']}")
+                summary_parts.append(question.get("question_text", ""))
+                summary_parts.append("")
+                for option in question.get("options", []):
+                    summary_parts.append(option)
+                summary_parts.append("")
+                summary_parts.append("-" * 80)
+                summary_parts.append("")
+        
+        summary = "\n".join(summary_parts)
+        return summary, 200, {"Content-Type": "text/plain"}
+    
+    return ("", 400)
 
 
 if __name__ == "__main__":

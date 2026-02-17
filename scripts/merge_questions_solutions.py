@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 # Load questions.json
 def load_json(file_path):
@@ -37,9 +38,11 @@ def save_json(file_path, data):
 
 # Main function
 def main():
-    questions_file = 'questions.json'
-    solutions_file = 'solutions.json'
-    output_file = 'questions_1.json'
+    base_dir = Path(__file__).resolve().parent.parent
+    data_dir = base_dir / "data"
+    questions_file = data_dir / "questions.json"
+    solutions_file = data_dir / "solutions.json"
+    output_file = data_dir / "questions_merged.json"
 
     questions = load_json(questions_file)
     solutions = load_json(solutions_file)

@@ -1,48 +1,157 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="panel" id="question-panel">
-  <div class="question-header">
-    <div>
-      <h2>Question {{ question_number }}</h2>
-      <p>Progress {{ current_index }} / {{ total_questions }}</p>
+<div class="test-container">
+  <section class="panel" id="question-panel">
+    <div class="question-header">
+      <div>
+        <h2>Question {{ question_number }}</h2>
+        <p>Progress {{ current_index }} / {{ total_questions }}</p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        {% if not show_feedback %}
+        <button class="ghost flag-question-btn{% if is_flagged_before_answer %} flagged{% endif %}" data-test-id="{{ test_id }}" data-question-number="{{ question_number }}" title="Flag this question for later review">🚩</button>
+        {% endif %}
+        <form method="post" action="{{ url_for('pause') }}" id="pause-form">
+          <input type="hidden" name="test_id" value="{{ test_id }}" />
+          <button class="ghost" type="button" onclick="confirmPause(event)">Exit</button>
+        </form>
+      </div>
     </div>
-    <form method="post" action="{{ url_for('pause') }}">
+    <p class="question-text">{{ question_text }}</p>
+    {% if select_num|int > 1 %}
+      <p class="muted">Select {{ select_num }} answers.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('answer') }}" class="options">
       <input type="hidden" name="test_id" value="{{ test_id }}" />
-      <button class="ghost" type="submit">Pause</button>
+      {% set input_type = 'checkbox' if select_num|int > 1 else 'radio' %}
+      {% for option in options %}
+        <label class="option" style="background-color: {% if show_feedback and option[0] in correct_answers %}#d4edda{% elif show_feedback and option[0] in user_answers %}#f8d7da{% else %}inherit{% endif %};">
+          <input type="{{ input_type }}" name="selected_answer" value="{{ option[0] }}" {% if input_type == 'radio' %}required{% endif %} {% if show_feedback and option[0] in user_answers %}checked{% endif %} {% if show_feedback %}disabled{% endif %} />
+          <span>{{ option }}</span>
+        </label>
+      {% endfor %}
+      <button class="button" type="submit" {% if show_feedback %}style="display: none;"{% endif %}>Submit Answer</button>
     </form>
-  </div>
-  <p class="question-text">{{ question_text }}</p>
-  {% if select_num|int > 1 %}
-    <p class="muted">Select {{ select_num }} answers.</p>
-  {% endif %}
-  <form method="post" action="{{ url_for('answer') }}" class="options">
-    <input type="hidden" name="test_id" value="{{ test_id }}" />
-    {% set input_type = 'checkbox' if select_num|int > 1 else 'radio' %}
-    {% for option in options %}
-      <label class="option" style="background-color: {% if show_feedback and option[0] in correct_answers %}#d4edda{% elif show_feedback and option[0] in user_answers %}#f8d7da{% else %}inherit{% endif %};">
-        <input type="{{ input_type }}" name="selected_answer" value="{{ option[0] }}" {% if input_type == 'radio' %}required{% endif %} {% if show_feedback and option[0] in user_answers %}checked{% endif %} {% if show_feedback %}disabled{% endif %} />
-        <span>{{ option }}</span>
-      </label>
-    {% endfor %}
-    <button class="button" type="submit" {% if show_feedback %}style="display: none;"{% endif %}>Submit Answer</button>
-  </form>
-  {% if show_feedback %}
-  <div class="explanation">
-    <h3>Explanation:</h3>
-    <p>{{ explanation }}</p>
-  </div>
-  <form method="post" action="{{ url_for('next_question') }}" class="next-question">
-    <input type="hidden" name="test_id" value="{{ test_id }}" />
-    <button class="button" type="submit">{% if is_last_question %}Finish{% else %}Next Question{% endif %}</button>
-  </form>
-  {% endif %}
-</section>
+    {% if show_feedback %}
+    <div class="explanation">
+      <h3>Explanation:</h3>
+      <p>{{ explanation }}</p>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <form method="post" action="{{ url_for('next_question') }}" class="next-question">
+        <input type="hidden" name="test_id" value="{{ test_id }}" />
+        <button class="button" type="submit">{% if is_last_question %}Finish{% else %}Next Question{% endif %}</button>
+      </form>
+      {% if answer_id %}
+      <button class="ghost flag-toggle{% if is_flagged %} flagged{% endif %}" data-answer-id="{{ answer_id }}" title="Flag this question for later review">🚩 Flag</button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="question-sidebar" id="question-sidebar">
+    <div class="sidebar-header">
+      <h3>Questions</h3>
+    </div>
+    <div class="sidebar-content" id="sidebar-content">
+      <!-- Questions will be dynamically loaded here -->
+    </div>
+  </aside>
+</div>
 <script>
+  function confirmPause(event) {
+    event.preventDefault();
+    if (confirm('Are you sure you want to exit this test?')) {
+      document.getElementById('pause-form').submit();
+    }
+  }
+
   document.getElementById('question-panel').scrollIntoView({ behavior: 'smooth' });
 
   const autoPauseUrl = "{{ url_for('pause_beacon') }}";
   const selectNum = Number("{{ select_num }}") || 1;
+  const testId = "{{ test_id }}";
+  const currentQuestionNumber = {{ question_number }};
+  
+  // Sidebar functionality
+  async function loadSidebarData() {
+    try {
+      const response = await fetch(`{{ url_for('get_sidebar_data') }}?test_id=${testId}`);
+      if (response.ok) {
+        const data = await response.json();
+        renderSidebar(data.questions, data.show_feedback);
+      }
+    } catch (error) {
+      console.error('Error loading sidebar data:', error);
+    }
+  }
+
+  function renderSidebar(questions, showFeedback) {
+    const sidebarContent = document.getElementById('sidebar-content');
+    if (!sidebarContent) return;
+    
+    sidebarContent.innerHTML = '';
+    
+    questions.forEach(q => {
+      const box = document.createElement('div');
+      box.className = 'question-box';
+      box.textContent = q.question_number;
+      box.title = `Question ${q.question_number}`;
+      
+      // Add current class
+      if (q.is_current) {
+        box.classList.add('current');
+      }
+      
+      // Add flagged class
+      if (q.flagged) {
+        box.classList.add('flagged');
+      }
+      
+      // Add correctness classes if feedback is shown and question is answered
+      if (showFeedback && q.answered) {
+        if (q.is_correct) {
+          box.classList.add('correct');
+        } else {
+          box.classList.add('incorrect');
+        }
+      }
+      
+      // Add click handler to navigate to question
+      box.addEventListener('click', () => {
+        navigateToQuestion(q.index);
+      });
+      
+      sidebarContent.appendChild(box);
+    });
+  }
+
+  function navigateToQuestion(targetIndex) {
+    // Create a form to navigate to the specific question
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('navigate_to_question') }}";
+    
+    const testIdInput = document.createElement('input');
+    testIdInput.type = 'hidden';
+    testIdInput.name = 'test_id';
+    testIdInput.value = testId;
+    
+    const indexInput = document.createElement('input');
+    indexInput.type = 'hidden';
+    indexInput.name = 'target_index';
+    indexInput.value = targetIndex;
+    
+    form.appendChild(testIdInput);
+    form.appendChild(indexInput);
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Load sidebar data on page load
+  loadSidebarData();
+
   const answerForm = document.querySelector('form.options');
   if (answerForm && selectNum > 1) {
     answerForm.addEventListener('submit', (event) => {
@@ -53,6 +162,30 @@
       }
     });
   }
+  // Handle Enter key to submit answer
+  if (answerForm && !"{{ show_feedback }}") {
+    answerForm.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        answerForm.dispatchEvent(new Event('submit'));
+        answerForm.submit();
+      }
+    });
+  }
+
+  // Handle Enter key to go to next question in feedback mode
+  if ("{{ show_feedback }}") {
+    document.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        const nextQuestionForm = document.querySelector('form.next-question');
+        if (nextQuestionForm) {
+          event.preventDefault();
+          nextQuestionForm.submit();
+        }
+      }
+    });
+  }
+
   const autoPauseData = new FormData();
   autoPauseData.append('test_id', "{{ test_id }}");
   let autoPauseSent = false;
@@ -83,6 +216,58 @@
     if (document.visibilityState === 'hidden') {
       sendAutoPause();
     }
+  });
+
+  // Handle flag toggle before answering
+  document.querySelectorAll('.flag-question-btn').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const testId = button.getAttribute('data-test-id');
+      const questionNumber = button.getAttribute('data-question-number');
+      const formData = new FormData();
+      formData.append('test_id', testId);
+      formData.append('question_number', questionNumber);
+      
+      try {
+        const response = await fetch('{{ url_for("toggle_flag_by_question") }}', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          button.classList.toggle('flagged');
+          // Reload sidebar to reflect flag change
+          loadSidebarData();
+        }
+      } catch (error) {
+        console.error('Error toggling flag:', error);
+      }
+    });
+  });
+
+  // Handle flag toggle during test feedback
+  document.querySelectorAll('.flag-toggle').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const answerId = button.getAttribute('data-answer-id');
+      const formData = new FormData();
+      formData.append('answer_id', answerId);
+      
+      try {
+        const response = await fetch('{{ url_for("toggle_flag") }}', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          button.classList.toggle('flagged');
+          // Reload sidebar to reflect flag change
+          loadSidebarData();
+        }
+      } catch (error) {
+        console.error('Error toggling flag:', error);
+      }
+    });
   });
 </script>
 {% endblock %}

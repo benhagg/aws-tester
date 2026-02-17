@@ -15,13 +15,13 @@
   <div>
     <h2>Total Time Spent</h2>
     <p>Sum of all tests</p>
-    <strong>{{ total_time|round(1) }}s</strong>
+    <strong>{{ total_time|format_time }}</strong>
   </div>
 </section>
 
 <section class="panel">
   <div class="section-header">
-    <h2>Recently Taken Tests</h2>
+    <h2>Recently Completed Tests</h2>
     <a class="ghost" href="{{ url_for('review') }}">View All Answers</a>
   </div>
   {% if recent_tests %}
@@ -30,7 +30,7 @@
         <div class="list-item">
           <div>
             <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
-            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
+            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct ({{ test['correct_count']|percentage(test['total_questions']) }}%) · {{ test['total_elapsed_seconds']|format_time }}</p>
           </div>
           <a class="button" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
         </div>
@@ -49,11 +49,11 @@
         <div class="list-item">
           <div>
             <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
-            <p>Status: {{ test['status'].title() }} · Score: {{ test['correct_count'] }} / {{ test['total_questions'] }}</p>
+            <p>Status: {{ test['status'].title() }} · Score: {{ test['correct_count'] }} / {{ test['total_questions'] }} ({{ test['correct_count']|percentage(test['total_questions']) }}%)</p>
             <p class="muted">Started <strong>{{ test['started_at']|date_only }}</strong> · Ended <strong>{{ test['ended_at']|date_only }}</strong></p>
           </div>
           <div class="meta">
-            <span>{{ test['total_elapsed_seconds']|round(1) }}s</span>
+            <span>{{ test['total_elapsed_seconds']|format_time }}</span>
             <a class="ghost" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
             <form method="post" action="{{ url_for('rename_test') }}" class="inline-form">
               <input type="hidden" name="test_id" value="{{ test['id'] }}" />

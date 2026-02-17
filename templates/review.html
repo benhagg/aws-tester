@@ -1,62 +1,235 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .flag-icon {
+    font-size: 1.2em;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    display: inline-block;
+    transition: opacity 0.2s;
+  }
+  
+  .flag-icon:hover {
+    opacity: 0.7;
+  }
+  
+  .flag-icon.flagged {
+    color: #ffc107;
+    font-weight: bold;
+  }
+  
+  .flag-icon.unflagged {
+    color: #ccc;
+  }
+  
+  .flag-icon-display {
+    font-size: 1.2em;
+    margin-left: 0.5rem;
+    display: inline-block;
+    cursor: default;
+    pointer-events: none;
+  }
+  
+  .flag-icon-display.flagged {
+    color: #ffc107;
+    font-weight: bold;
+  }
+  
+  .copy-button {
+    padding: 0.4rem 0.8rem;
+    margin-left: 0.5rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  
+  .copy-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .copy-button.copied {
+    background-color: #28a745;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .question-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .list-item.highlighted {
+    border-color: #1f7a3d;
+    box-shadow: 0 0 0 3px rgba(31, 122, 61, 0.2);
+  }
+  
+  .detail-panel {
+    display: none;
+  }
+  
+  .detail-panel.expanded {
+    display: block;
+  }
+</style>
+
 <section class="panel">
   <div class="section-header">
-    <h2>{% if test_id %}Review Test {{ test_id }}{% else %}Review All Attempts{% endif %}</h2>
-    <a class="ghost" href="{{ url_for('history') }}">Back to History</a>
+    <div>
+      <h2>{% if test_id %}Review Test {{ test_id }}{% else %}Review All Attempts{% endif %}</h2>
+      {% if test_id and items %}
+        <p class="muted" style="margin-top: 0.5rem;">
+          <strong>{{ correct_count }}/{{ total_count }} correct</strong> ({{ percentage }}%)
+        </p>
+      {% endif %}
+    </div>
+    <div>
+      {% if test_id and items %}
+        <button class="copy-button" onclick="copySummary({{ test_id }}, null, event)" id="copy-all-btn">Copy Flagged & Incorrect</button>
+      {% endif %}
+      <a class="ghost" href="{{ url_for('history') }}">Back to History</a>
+    </div>
   </div>
   {% if items %}
     <div class="list">
       {% for item in items %}
-        <div class="list-item" {% if selected_item and selected_item['id'] == item['id'] %}style="border-color: #1f7a3d;"{% endif %}>
+        <div class="list-item {% if item['is_correct'] %}correct{% else %}incorrect{% endif %}" data-answer-id="{{ item['id'] }}">
           <div>
             <strong>Q{{ item['question_number'] }}</strong>
             <p>{{ item['question_text'] }}</p>
             <p class="muted">
-              {{ item['name'] or item['mode'].replace('_', ' ').title() }} · <strong>{{ item['started_at']|date_only }}</strong>
+              {{ item['name'] or item['mode'].replace('_', ' ').title() }}
             </p>
           </div>
-          <div class="meta">
+          <div class="meta question-meta">
             <span class="status-pill {{ 'ok' if item['is_correct'] else 'bad' }}">
               {{ 'OK' if item['is_correct'] else 'X' }}
             </span>
-            <span>{{ item['elapsed_seconds']|round(1) }}s</span>
-            {% if test_id %}
-              <a class="ghost" href="{{ url_for('review', test_id=test_id, answer_id=item['id']) }}">View</a>
-            {% else %}
-              <a class="ghost" href="{{ url_for('review', answer_id=item['id']) }}">View</a>
-            {% endif %}
+            <span>{{ item['elapsed_seconds']|format_time }}</span>
+            {% if item['flagged'] %}<span class="flag-icon-display flagged">🚩</span>{% endif %}
+            <a class="ghost" href="#" onclick="viewQuestion({{ item['id'] }}, event)">View</a>
           </div>
         </div>
+        <section class="panel detail-panel" data-answer-id="{{ item['id'] }}" style="margin-top: -0.5rem; margin-bottom: 1rem;">
+          <div class="section-header">
+            <div>
+              <h3>Q{{ item['question_number'] }}</h3>
+              <div class="question-meta">
+                <span class="status-pill {{ 'ok' if item['is_correct'] else 'bad' }}">
+                  {{ 'OK' if item['is_correct'] else 'X' }}
+                </span>
+              </div>
+            </div>
+            <button class="copy-button" onclick="copySummary(null, {{ item['id'] }}, event)" id="copy-q-btn">Copy Question</button>
+          </div>
+          <p class="question-text">{{ item['question_text'] }}</p>
+          <div class="options">
+            {% set question = QUESTIONS_BY_NUMBER.get(item['question_number'], {}) %}
+            {% set input_type = 'checkbox' if question.get('select_num', 1)|int > 1 else 'radio' %}
+            {% set user_answers = item['selected_answer'].split(',') if item['selected_answer'] else [] %}
+            {% set correct_answers = item['correct_answer'].split(',') if item['correct_answer'] else [] %}
+            {% for option in question.get('options', []) %}
+              <label class="option" style="background-color: {% if option[0] in correct_answers %}#d4edda{% elif option[0] in user_answers %}#f8d7da{% else %}inherit{% endif %};">
+                <input type="{{ input_type }}" disabled {% if option[0] in user_answers %}checked{% endif %} />
+                <span>{{ option }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <div class="explanation">
+            <h3>Explanation:</h3>
+            <p>{{ question.get('explanation', '') }}</p>
+          </div>
+        </section>
       {% endfor %}
     </div>
-    {% if selected_item %}
-      <section class="panel">
-        <div class="section-header">
-          <h3>Q{{ selected_item['question_number'] }}</h3>
-          <span class="status-pill {{ 'ok' if selected_item['is_correct'] else 'bad' }}">
-            {{ 'OK' if selected_item['is_correct'] else 'X' }}
-          </span>
-        </div>
-        <p class="question-text">{{ selected_item['question_text'] }}</p>
-        <div class="options">
-          {% set input_type = 'checkbox' if selected_item['select_num']|int > 1 else 'radio' %}
-          {% for option in selected_item['options'] %}
-            <label class="option" style="background-color: {% if option[0] in selected_item['correct_answers'] %}#d4edda{% elif option[0] in selected_item['user_answers'] %}#f8d7da{% else %}inherit{% endif %};">
-              <input type="{{ input_type }}" disabled {% if option[0] in selected_item['user_answers'] %}checked{% endif %} />
-              <span>{{ option }}</span>
-            </label>
-          {% endfor %}
-        </div>
-        <div class="explanation">
-          <h3>Explanation:</h3>
-          <p>{{ selected_item['explanation'] }}</p>
-        </div>
-      </section>
-    {% endif %}
   {% else %}
     <p class="muted">No answers yet.</p>
   {% endif %}
 </section>
+
+<script>
+  // Track which items are expanded
+  const expandedItems = new Set();
+  
+  // Restore expanded state from URL parameters (if coming from answer_id link)
+  window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const answerId = urlParams.get('answer_id');
+    if (answerId) {
+      expandItem(parseInt(answerId));
+      // Remove the answer_id from URL to clean up the address bar
+      window.history.replaceState({}, document.title, window.location.pathname + '?test_id=' + new URLSearchParams(window.location.search).get('test_id'));
+    }
+  });
+  
+  function viewQuestion(answerId, evt) {
+    evt.preventDefault();
+    expandItem(answerId);
+    // Scroll to the detail panel
+    const detailPanel = document.querySelector(`.detail-panel[data-answer-id="${answerId}"]`);
+    if (detailPanel) {
+      detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+  
+  function expandItem(answerId) {
+    expandedItems.add(answerId);
+    
+    // Update UI
+    const listItem = document.querySelector(`.list-item[data-answer-id="${answerId}"]`);
+    const detailPanel = document.querySelector(`.detail-panel[data-answer-id="${answerId}"]`);
+    
+    if (listItem) listItem.classList.add('highlighted');
+    if (detailPanel) detailPanel.classList.add('expanded');
+  }
+  
+  function collapseItem(answerId) {
+    expandedItems.delete(answerId);
+    
+    // Update UI
+    const listItem = document.querySelector(`.list-item[data-answer-id="${answerId}"]`);
+    const detailPanel = document.querySelector(`.detail-panel[data-answer-id="${answerId}"]`);
+    
+    if (listItem) listItem.classList.remove('highlighted');
+    if (detailPanel) detailPanel.classList.remove('expanded');
+  }
+  
+  function copySummary(testId, answerId, evt) {
+    const form = new FormData();
+    if (testId) form.append('test_id', testId);
+    if (answerId) form.append('answer_id', answerId);
+    
+    fetch('{{ url_for("copy_summary") }}', {
+      method: 'POST',
+      body: form
+    }).then(response => response.text())
+      .then(text => {
+        navigator.clipboard.writeText(text).then(() => {
+          // Show feedback
+          const button = evt.target;
+          const originalText = button.textContent;
+          button.textContent = '✓ Copied!';
+          button.classList.add('copied');
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('copied');
+          }, 2000);
+        }).catch(err => {
+          alert('Failed to copy to clipboard: ' + err);
+        });
+      }).catch(err => {
+        console.error('Error fetching summary:', err);
+        alert('Failed to get summary');
+      });
+  }
+</script>
 {% endblock %}

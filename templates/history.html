@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel stats">
+  <div>
+    <h2>Overall Stats</h2>
+    <p>Total Questions Answered</p>
+    <strong>{{ total_answers }}</strong>
+  </div>
+  <div>
+    <h2>Correct Percentage</h2>
+    <p>Across all attempts</p>
+    <strong>{{ correct_percent|round(1) }}%</strong>
+  </div>
+  <div>
+    <h2>Total Time Spent</h2>
+    <p>Sum of all tests</p>
+    <strong>{{ total_time|round(1) }}s</strong>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-header">
+    <h2>Recently Taken Tests</h2>
+    <a class="ghost" href="{{ url_for('review') }}">View All Answers</a>
+  </div>
+  {% if recent_tests %}
+    <div class="list">
+      {% for test in recent_tests %}
+        <div class="list-item">
+          <div>
+            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
+          </div>
+          <a class="button" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No completed tests yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>All Tests</h2>
+  {% if tests %}
+    <div class="list">
+      {% for test in tests %}
+        <div class="list-item">
+          <div>
+            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <p>Status: {{ test['status'].title() }} · Score: {{ test['correct_count'] }} / {{ test['total_questions'] }}</p>
+            <p class="muted">Started {{ test['started_at']|date_only }} · Ended {{ test['ended_at']|date_only }}</p>
+          </div>
+          <div class="meta">
+            <span>{{ test['total_elapsed_seconds']|round(1) }}s</span>
+            <a class="ghost" href="{{ url_for('review', test_id=test['id']) }}">Review</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No history yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

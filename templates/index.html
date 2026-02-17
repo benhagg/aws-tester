@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <h2>Start a Study Session</h2>
+  <div class="card-grid">
+    <form class="card card-form" method="post" action="{{ url_for('start') }}">
+      <input type="hidden" name="mode" value="random_questions" />
+      <h3>Random Questions</h3>
+      <p>Shuffle the full question bank.</p>
+      <label class="toggle">
+        <input type="checkbox" name="show_feedback" value="1" checked />
+        Show correctness + explanation after each answer
+      </label>
+      <button class="button" type="submit">Start</button>
+    </form>
+    <form class="card card-form" method="post" action="{{ url_for('start') }}">
+      <input type="hidden" name="mode" value="in_order_questions" />
+      <h3>In Order Questions</h3>
+      <p>Work through every question sequentially.</p>
+      <label class="toggle">
+        <input type="checkbox" name="show_feedback" value="1" checked />
+        Show correctness + explanation after each answer
+      </label>
+      <button class="button" type="submit">Start</button>
+    </form>
+    <a class="card" href="{{ url_for('start', mode='full_test_in_order') }}">
+      <h3>Full Test (In Order)</h3>
+      <p>65 questions, sequential pacing.</p>
+    </a>
+    <a class="card" href="{{ url_for('start', mode='full_test_random') }}">
+      <h3>Full Test (Randomized)</h3>
+      <p>65 questions, random order.</p>
+    </a>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Paused Sessions</h2>
+  {% if paused_tests %}
+    <div class="list">
+      {% for test in paused_tests %}
+        <div class="list-item">
+          <div>
+            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <p>Started {{ test['started_at']|date_only }} · {{ test['total_questions'] }} questions</p>
+          </div>
+          <a class="button" href="{{ url_for('resume', test_id=test['id']) }}">Resume</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No paused sessions yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Recently Completed Tests</h2>
+  {% if recent_tests %}
+    <div class="list">
+      {% for test in recent_tests %}
+        <div class="list-item">
+          <div>
+            <strong>{{ test['mode'].replace('_', ' ').title() }}</strong>
+            <p>{{ test['correct_count'] }} / {{ test['total_questions'] }} correct · {{ test['total_elapsed_seconds']|round(1) }}s</p>
+          </div>
+          <span class="status">{{ test['ended_at']|date_only }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No completed tests yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="section-header">
+    <h2>{% if test_id %}Review Test {{ test_id }}{% else %}Review All Attempts{% endif %}</h2>
+    <a class="ghost" href="{{ url_for('history') }}">Back to History</a>
+  </div>
+  {% if items %}
+    <div class="list">
+      {% for item in items %}
+        <div class="list-item">
+          <div>
+            <strong>Q{{ item['question_number'] }}</strong>
+            <p class="muted">{{ item['question_text'] }}</p>
+            <p class="muted">{{ item['mode'].replace('_', ' ').title() }} · {{ item['started_at']|date_only }}</p>
+          </div>
+          <div class="meta">
+            <span class="status-pill {{ 'ok' if item['is_correct'] else 'bad' }}">
+              {{ 'OK' if item['is_correct'] else 'X' }}
+            </span>
+            <span>{{ item['elapsed_seconds']|round(1) }}s</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No answers yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

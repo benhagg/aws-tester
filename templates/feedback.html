@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="feedback-header">
+    <h2>Question {{ question_number }}</h2>
+    <span class="status-pill {{ 'ok' if is_correct else 'bad' }}">
+      {{ 'OK' if is_correct else 'X' }}
+    </span>
+  </div>
+  <p class="question-text">{{ question_text }}</p>
+  <div class="feedback-body">
+    <p><strong>Your answer:</strong> {{ selected_answer }}</p>
+    <p><strong>Correct answer:</strong> {{ correct_answer }}</p>
+    <p class="muted">{{ explanation }}</p>
+  </div>
+  {% if test_completed %}
+    <a class="button" href="{{ url_for('history') }}">View Results</a>
+  {% else %}
+    <a class="button" href="{{ url_for('question', test_id=test_id) }}">Next Question</a>
+  {% endif %}
+</section>
+{% endblock %}

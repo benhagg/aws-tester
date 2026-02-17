@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="question-header">
+    <div>
+      <h2>Question {{ question_number }}</h2>
+      <p>Progress {{ current_index }} / {{ total_questions }}</p>
+    </div>
+    <form method="post" action="{{ url_for('pause') }}">
+      <input type="hidden" name="test_id" value="{{ test_id }}" />
+      <button class="ghost" type="submit">Pause</button>
+    </form>
+  </div>
+  <p class="question-text">{{ question_text }}</p>
+  <form method="post" action="{{ url_for('answer') }}" class="options">
+    <input type="hidden" name="test_id" value="{{ test_id }}" />
+    {% for option in options %}
+      <label class="option">
+        <input type="radio" name="selected_answer" value="{{ option[0] }}" required />
+        <span>{{ option }}</span>
+      </label>
+    {% endfor %}
+    <button class="button" type="submit">Submit Answer</button>
+  </form>
+</section>
+{% endblock %}

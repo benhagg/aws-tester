@@ -128,11 +128,11 @@
       <button class="button" type="submit">Start</button>
     </form>
     
-    <a class="card" href="{{ url_for('start', mode='full_test_in_order') }}">
+    <a class="card start-test-link" data-label="Full Test (In Order)" data-count="65" href="{{ url_for('start', mode='full_test_in_order') }}">
       <h3>Full Test (In Order)</h3>
       <p>65 questions, sequential pacing.</p>
     </a>
-    <a class="card" href="{{ url_for('start', mode='full_test_random') }}">
+    <a class="card start-test-link" data-label="Full Test (Randomized)" data-count="65" href="{{ url_for('start', mode='full_test_random') }}">
       <h3>Full Test (Randomized)</h3>
       <p>65 questions, random order.</p>
     </a>
@@ -181,6 +181,50 @@
     const selectedQuestions = parseRangeInput(rangeInput.value);
     hiddenInput.value = selectedQuestions.length > 0 ? JSON.stringify(selectedQuestions) : '';
   }
+
+  function getModeLabel(mode) {
+    if (mode === 'random_questions') return 'Random Questions';
+    if (mode === 'in_order_questions') return 'In Order Questions';
+    if (mode === 'full_test_in_order') return 'Full Test (In Order)';
+    if (mode === 'full_test_random') return 'Full Test (Randomized)';
+    return 'Study Session';
+  }
+
+  document.querySelectorAll('form.study-session-form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      const mode = form.querySelector('input[name="mode"]')?.value || '';
+      const numQuestions = form.querySelector('input[name="num_questions"]')?.value;
+      const rangeInput = form.querySelector('input[name="question_range"]')?.value;
+      const showFeedback = form.querySelector('input[name="show_feedback"]');
+      const details = [];
+
+      if (numQuestions) {
+        details.push(`Questions: ${numQuestions}`);
+      }
+      if (rangeInput && rangeInput.trim()) {
+        details.push(`Range: ${rangeInput.trim()}`);
+      }
+      if (showFeedback) {
+        details.push(`Show feedback: ${showFeedback.checked ? 'Yes' : 'No'}`);
+      }
+
+      const message = `Start ${getModeLabel(mode)}?${details.length ? '\n' + details.join('\n') : ''}`;
+      if (!confirm(message)) {
+        event.preventDefault();
+      }
+    });
+  });
+
+  document.querySelectorAll('.start-test-link').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      const label = link.getAttribute('data-label') || 'Study Session';
+      const count = link.getAttribute('data-count');
+      const detail = count ? `\nQuestions: ${count}` : '';
+      if (!confirm(`Start ${label}?${detail}`)) {
+        event.preventDefault();
+      }
+    });
+  });
 </script>
 
 <section class="panel">
@@ -192,6 +236,7 @@
           <div>
             <strong>{{ test['name'] or test['mode'].replace('_', ' ').title() }}</strong>
             <p>Started <strong>{{ test['started_at']|date_only }}</strong> · {{ test['total_questions'] }} questions</p>
+            <p class="muted">Answered {{ test['answered_count'] }} / {{ test['total_questions'] }} · Time {{ test['total_elapsed_seconds']|format_time }}</p>
           </div>
           <a class="button" href="{{ url_for('resume', test_id=test['id']) }}">Resume</a>
         </div>

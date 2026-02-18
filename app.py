@@ -153,6 +153,19 @@ def percentage(correct, total):
     return round((correct / total) * 100)
 
 
+def get_total_elapsed_seconds(test, now=None):
+    if not test:
+        return 0
+    total_elapsed = test["total_elapsed_seconds"] or 0
+    if not now:
+        now = utc_now_iso()
+    if test["last_resume_at"]:
+        total_elapsed += (
+            datetime.fromisoformat(now) - datetime.fromisoformat(test["last_resume_at"])
+        ).total_seconds()
+    return total_elapsed
+
+
 def db_query(query, params=(), one=False, commit=False):
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -314,7 +327,19 @@ def resume_test(test_id):
 @app.route("/")
 def home():
     paused_tests = db_query(
-        "SELECT id, name, mode, started_at, total_questions FROM tests WHERE status = 'paused' ORDER BY started_at DESC"
+        """
+        SELECT t.id, t.name, t.mode, t.started_at, t.total_questions, t.total_elapsed_seconds,
+               COALESCE(a.answered_count, 0) AS answered_count
+        FROM tests t
+        LEFT JOIN (
+            SELECT test_id, COUNT(*) AS answered_count
+            FROM test_answers
+            WHERE selected_answer != ''
+            GROUP BY test_id
+        ) a ON a.test_id = t.id
+        WHERE t.status = 'paused'
+        ORDER BY t.started_at DESC
+        """
     )
     recent_tests = db_query(
         """
@@ -417,6 +442,7 @@ def question():
     if progress["current_index"] >= len(progress["order"]):
         return redirect(url_for("history"))
 
+    now = utc_now_iso()
     question_number = progress["order"][progress["current_index"]]
     question = QUESTIONS_BY_NUMBER.get(question_number)
     correct_answers = normalize_answers(question.get("solution"))
@@ -425,11 +451,17 @@ def question():
     
     # Check if this question is flagged
     answer_row = db_query(
-        "SELECT flagged FROM test_answers WHERE test_id = ? AND question_number = ?",
+        "SELECT id, flagged, selected_answer, is_correct FROM test_answers WHERE test_id = ? AND question_number = ?",
         (test_id, question_number),
         one=True
     )
     is_flagged_before_answer = answer_row["flagged"] if answer_row else False
+    has_answer = bool(answer_row and answer_row["selected_answer"])
+    user_answers = normalize_answers(answer_row["selected_answer"]) if has_answer else []
+    show_feedback = bool(test["show_feedback"]) and has_answer
+    answer_id = answer_row["id"] if has_answer else None
+    is_flagged = answer_row["flagged"] if has_answer else False
+    elapsed_seconds = get_total_elapsed_seconds(test, now=now)
 
     return render_template(
         "question.html",
@@ -441,13 +473,14 @@ def question():
         total_questions=len(progress["order"]),
         correct_answers=correct_answers,
         explanation=question.get("explanation", ""),
-        show_feedback=False,
-        user_answers=[],
+        show_feedback=show_feedback,
+        user_answers=user_answers,
         is_last_question=is_last_question,
         select_num=select_num,
-        answer_id=None,
+        answer_id=answer_id,
         is_flagged_before_answer=is_flagged_before_answer,
-        is_flagged=False,
+        is_flagged=is_flagged,
+        elapsed_seconds=elapsed_seconds,
     )
 
 
@@ -529,6 +562,7 @@ def answer():
             one=True
         )
         is_flagged = answer_flag_row["flagged"] if answer_flag_row else False
+        elapsed_seconds = get_total_elapsed_seconds(test, now=now)
         return render_template(
             "question.html",
             test_id=test_id,
@@ -546,6 +580,7 @@ def answer():
             answer_id=answer_id,
             is_flagged_before_answer=False,
             is_flagged=is_flagged,
+            elapsed_seconds=elapsed_seconds,
         )
 
     next_index = progress["current_index"] + 1

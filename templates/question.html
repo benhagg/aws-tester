@@ -27,7 +27,7 @@
       {% set input_type = 'checkbox' if select_num|int > 1 else 'radio' %}
       {% for option in options %}
         <label class="option" style="background-color: {% if show_feedback and option[0] in correct_answers %}#d4edda{% elif show_feedback and option[0] in user_answers %}#f8d7da{% else %}inherit{% endif %};">
-          <input type="{{ input_type }}" name="selected_answer" value="{{ option[0] }}" {% if input_type == 'radio' %}required{% endif %} {% if show_feedback and option[0] in user_answers %}checked{% endif %} {% if show_feedback %}disabled{% endif %} />
+          <input type="{{ input_type }}" name="selected_answer" value="{{ option[0] }}" {% if input_type == 'radio' %}required{% endif %} {% if option[0] in user_answers %}checked{% endif %} {% if show_feedback %}disabled{% endif %} />
           <span>{{ option }}</span>
         </label>
       {% endfor %}
@@ -53,6 +53,10 @@
   <aside class="question-sidebar" id="question-sidebar">
     <div class="sidebar-header">
       <h3>Questions</h3>
+      <div class="sidebar-timer">
+        <span class="label">Time</span>
+        <span id="test-timer" data-elapsed="{{ elapsed_seconds|default(0) }}">0s</span>
+      </div>
     </div>
     <div class="sidebar-content" id="sidebar-content">
       <!-- Questions will be dynamically loaded here -->
@@ -73,6 +77,33 @@
   const selectNum = Number("{{ select_num }}") || 1;
   const testId = "{{ test_id }}";
   const currentQuestionNumber = {{ question_number }};
+  const initialElapsedSeconds = Number("{{ elapsed_seconds|default(0) }}") || 0;
+  const showFeedback = "{{ '1' if show_feedback else '0' }}";
+
+  function formatElapsed(seconds) {
+    const total = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  }
+
+  function startTimer() {
+    const timerEl = document.getElementById('test-timer');
+    if (!timerEl) return;
+    let elapsed = initialElapsedSeconds;
+    timerEl.textContent = formatElapsed(elapsed);
+    setInterval(() => {
+      elapsed += 1;
+      timerEl.textContent = formatElapsed(elapsed);
+    }, 1000);
+  }
   
   // Sidebar functionality
   async function loadSidebarData() {
@@ -157,6 +188,7 @@
 
   // Load sidebar data on page load
   loadSidebarData();
+  startTimer();
 
   const answerForm = document.querySelector('form.options');
   if (answerForm && selectNum > 1) {
@@ -168,6 +200,28 @@
       }
     });
   }
+
+  // Handle A/B/C... keyboard selection
+  const optionInputs = Array.from(document.querySelectorAll('form.options input[name="selected_answer"]'));
+  const optionMap = new Map(optionInputs.map((input) => [input.value.toUpperCase(), input]));
+
+  document.addEventListener('keydown', (event) => {
+    if (showFeedback === '1') return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) return;
+    if (!event.key || event.key.length !== 1) return;
+    const key = event.key.toUpperCase();
+    const targetInput = optionMap.get(key);
+    if (!targetInput) return;
+    event.preventDefault();
+    if (targetInput.type === 'checkbox') {
+      targetInput.checked = !targetInput.checked;
+    } else {
+      targetInput.checked = true;
+    }
+    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   // Handle Enter key to submit answer
   if (answerForm && !"{{ show_feedback }}") {
     answerForm.addEventListener('keypress', (event) => {

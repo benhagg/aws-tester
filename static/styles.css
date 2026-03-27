@@ -297,6 +297,10 @@ body {
   line-height: 1.2;
 }
 
+.sidebar-timer #test-timer {
+  white-space: nowrap;
+}
+
 .sidebar-timer .label {
   text-transform: uppercase;
   letter-spacing: 0.08em;

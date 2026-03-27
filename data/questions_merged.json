@@ -1540,8 +1540,8 @@
             "C. Attach Elastic IP addresses to the six EC2 instances. Create an Amazon Route 53 geolocation routing policy to route requests to one of the six EC2 instances. Create an Amazon CloudFront distribution. Use the Route 53 record as the distribution's origin.",
             "D. Replace the two NLBs with two Application Load Balancers (ALBs). Create an Amazon Route 53 latency routing policy to route requests to one of the two ALBs. Create an Amazon CloudFront distribution. Use the Route 53 record as the distribution\u2019s origin."
         ],
-        "solution": "A",
-        "explanation": "Geolocation routing ensures users are directed to the correct regional entry point, and CloudFront can further optimize content delivery.",
+        "solution": "B",
+        "explanation": "",
         "select_num": 1
     },
     {
@@ -2698,7 +2698,7 @@
             "D. Use the AWS provided, publicly available ip-ranges.json file to obtain the private IP address of the S3 bucket\u2019s service API endpoint. Create a route in the VPC route table to provide the EC2 instance with access to the S3 bucket. Attach a resource policy to the S3 bucket to only allow the EC2 instance\u2019s IAM role for access."
         ],
         "solution": "A",
-        "explanation": "Interface VPC endpoints (PrivateLink) provide a private IP address within the VPC for S3 access. Combined with bucket policies, this ensures all traffic remains on the AWS backbone and is restricted to specific callers.",
+        "explanation": "Interface VPC endpoints (PrivateLink) provide a private IP address within the VPC for S3 access. Combined with bucket policies, this ensures all traffic remains on the AWS backbone and is restricted to specific callers. Also Gateway endpoints do not support security groups.",
         "select_num": 1
     },
     {

@@ -2,6 +2,10 @@
 
 A web-based study application for practicing AWS certification exam questions with real-time feedback, progress tracking, and test analytics.
 
+## Source Attribution
+
+The question content in this repository was originally sourced from [Iamrushabhshahh/AWS-Certified-Solutions-Architect-Associate-SAA-C03-Exam-Dump-With-Solution](https://github.com/Iamrushabhshahh/AWS-Certified-Solutions-Architect-Associate-SAA-C03-Exam-Dump-With-Solution).
+
 
 ## Running the App
 

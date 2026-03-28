@@ -1817,8 +1817,8 @@
             "C. Deploy the application stack in a single AWS Region. Use Amazon CloudFront to serve the static content. Serve the dynamic content directly from the ALB.",
             "D. Deploy the application stack in two AWS Regions. Use an Amazon Route 53 geolocation routing policy to serve all content from the ALB in the closest Region."
         ],
-        "solution": "B",
-        "explanation": "Latency routing directs users to the region with the lowest network latency, improving the user experience globally.",
+        "solution": "A",
+        "explanation": "",
         "select_num": 1
     },
     {

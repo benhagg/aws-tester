@@ -263,11 +263,6 @@
   };
 
   window.addEventListener('beforeunload', sendAutoPause);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      sendAutoPause();
-    }
-  });
 
   // Handle flag toggle before answering
   document.querySelectorAll('.flag-question-btn').forEach((button) => {

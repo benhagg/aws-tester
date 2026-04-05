@@ -2,7 +2,7 @@ import json
 import random
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, redirect, render_template, request, url_for
@@ -17,7 +17,7 @@ app.config["SECRET_KEY"] = "study-tool-dev"
 
 
 def utc_now_iso():
-    return datetime.utcnow().isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def load_json(path):

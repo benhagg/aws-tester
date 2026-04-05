@@ -1,7 +1,7 @@
 """
-Reload the database with correct answers from questions_merged.json
-This script updates test_answers.correct_answer by matching question_number 
-with the solutions in questions_merged.json
+Reload the database with correct answers from questions_merged.json.
+This script updates test_answers.correct_answer, test_answers.is_correct,
+and the stored correct_count in tests.
 """
 
 import json
@@ -57,9 +57,22 @@ def reload_db_with_solutions():
                     (normalized_solution, is_correct, answer_id)
                 )
                 updated_count += 1
+
+        cursor.execute("SELECT id FROM tests")
+        test_rows = cursor.fetchall()
+        for (test_id,) in test_rows:
+            cursor.execute(
+                "SELECT COUNT(*) FROM test_answers WHERE test_id = ? AND is_correct = 1",
+                (test_id,),
+            )
+            correct_count = cursor.fetchone()[0]
+            cursor.execute(
+                "UPDATE tests SET correct_count = ? WHERE id = ?",
+                (correct_count, test_id),
+            )
         
         conn.commit()
-        print(f"Updated {updated_count} test_answers with correct solutions and is_correct status")
+        print(f"Updated {updated_count} test_answers and refreshed tests.correct_count")
 
 
 if __name__ == "__main__":

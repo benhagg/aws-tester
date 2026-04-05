@@ -14,6 +14,9 @@ Start the Flask development server:
 python app.py
 ```
 
+Note: this creates the SQLite schema automatically, but it reads questions from `data/questions_merged.json` instead of loading them into the database.
+If you change the merged answers later, run `scripts/reload_db_with_solutions.py` to refresh saved answer rows and test summaries.
+
 Then open your browser to:
 ```
 http://localhost:5000
